@@ -1,4 +1,6 @@
 const MEAL_ORDER = ["Breakfast", "Lunch", "Dinner", "Late Night"];
+let menuRequest = 0;
+let menuController;
 
 const state = {
   halls: [],
@@ -28,11 +30,16 @@ function esc(s) {
 }
 
 async function init() {
-  const res = await fetch("/api/halls");
-  const data = await res.json();
-  state.halls = data.halls;
+  state.halls = Object.keys(HALL_THEMES);
   renderHallTabs();
-  selectHall(state.halls[0]);
+  try {
+    const res = await fetch("/api/halls");
+    if (!res.ok) throw new Error("Dining halls unavailable");
+    const data = await res.json();
+    if (Array.isArray(data.halls) && data.halls.length) state.halls = data.halls;
+  } catch (err) { console.error(err); }
+  if (!state.hall) await selectHall(state.halls[0]);
+  else renderHallTabs();
 }
 
 function renderHallTabs() {
@@ -41,13 +48,21 @@ function renderHallTabs() {
     const btn = document.createElement("button");
     btn.textContent = hall;
     btn.classList.toggle("active", hall === state.hall);
+    btn.setAttribute("aria-pressed", String(hall === state.hall));
     btn.onclick = () => selectHall(hall);
     el.hallTabs.appendChild(btn);
   }
 }
 
 async function selectHall(hall, force = false) {
+  const request = ++menuRequest;
+  menuController?.abort();
+  menuController = new AbortController();
   state.hall = hall;
+  state.items = [];
+  state.date = null;
+  el.menuDate.textContent = "";
+  applyHallTheme(hall);
   renderHallTabs();
   el.statusMsg.textContent = "Loading menu…";
   el.menu.innerHTML = "";
@@ -55,22 +70,25 @@ async function selectHall(hall, force = false) {
   el.refreshBtn.disabled = true;
   try {
     const url = `/api/menu/${encodeURIComponent(hall)}${force ? "?refresh=1" : ""}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: menuController.signal });
+    if (!res.ok) throw new Error("Menu request failed");
     const data = await res.json();
-    state.items = data.items || [];
+    if (request !== menuRequest) return;
+    state.items = Array.isArray(data.items) ? data.items : [];
     state.date = data.date;
     el.menuDate.textContent = data.date
       ? new Date(data.date + "T00:00:00").toLocaleDateString(undefined, {
           weekday: "long", month: "long", day: "numeric", year: "numeric",
         })
       : "";
-    el.statusMsg.textContent = `${data.count} items`;
+    el.statusMsg.textContent = `${state.items.length} foods`;
     renderMealTabs();
   } catch (err) {
-    el.statusMsg.textContent = "Failed to load menu.";
+    if (request !== menuRequest) return;
+    el.statusMsg.textContent = "Menu unavailable. Select Refresh to try again.";
     console.error(err);
   } finally {
-    el.refreshBtn.disabled = false;
+    if (request === menuRequest) el.refreshBtn.disabled = false;
   }
 }
 
@@ -203,4 +221,4 @@ document.addEventListener("keydown", (e) => {
 });
 el.refreshBtn.onclick = () => selectHall(state.hall, true);
 
-init();
+const initPromise = init();

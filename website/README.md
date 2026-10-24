@@ -113,3 +113,18 @@ See `db.js` for the full column list.
 - `public/index.html`, `tracker.css`, `tracker.js` — meal tracker front page
 - `public/menu.html`, `styles.css`, `app.js` — menu browser
 - `public/dev.html`, `dev.css`, `dev.js` — developer raw-database table view
+
+## Dining hall covers and saved nutrition
+
+- `public/hall-theme.js` maps each hall to its photograph, crop position, accent
+  and residential area. The default photos are the banners on the respective
+  official UMass Dining location pages. Replace an `image` URL with a local asset
+  such as `images/halls/worcester.webp` to use your own photo.
+- The tracker and menu browser share the same cover configuration. The photo
+  fades in after loading; a hall-specific gradient remains if it fails.
+- New meals save per-serving nutrition in `items[].nutrition`, inside the existing
+  `items_json` column. No schema migration is required. Historical meals use that
+  snapshot, even when today's menu changes or is unavailable. Older saves without
+  snapshots retain their stored aggregate totals until food or portions are edited;
+  unavailable values are shown as an em dash rather than zero.
+- Run `npm test` for the menu race and nutrition-history regression checks.

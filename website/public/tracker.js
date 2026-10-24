@@ -2,7 +2,7 @@
 // Each metric knows how to pull a value from a menu item and how it aggregates.
 // kind "sum": additive nutrient scaled by servings; "avg": averaged score.
 const METRICS = [
-  { key: "calories",      label: "Calories",     field: "calories",       unit: "",    kind: "sum" },
+  { key: "calories",      label: "Calories",     field: "calories",       unit: " kcal", kind: "sum" },
   { key: "protein",       label: "Protein",      field: "protein",        unit: "g",   kind: "sum" },
   { key: "total_carb",    label: "Carbs",        field: "total_carb",     unit: "g",   kind: "sum" },
   { key: "total_fat",     label: "Total Fat",    field: "total_fat",      unit: "g",   kind: "sum" },
@@ -36,9 +36,16 @@ const state = {
   rows: [],               // [{ uid, item|null, servings }]
   visible: loadVisible(),
   loadedPlateId: null,
+  loading: true,
+  saving: false,
+  legacyTotals: null,
 };
 
 let uidCounter = 1;
+let menuRequest = 0;
+let plateLoadRequest = 0;
+let photoRequest = 0;
+let menuController;
 
 const el = {
   hallTabs: document.getElementById("hallTabs"),
@@ -62,6 +69,9 @@ const el = {
   loadModal: document.getElementById("loadModal"),
   loadClose: document.getElementById("loadClose"),
   loadList: document.getElementById("loadList"),
+  menuNotice: document.getElementById("menuNotice"),
+  nutritionNote: document.getElementById("nutritionNote"),
+  actionStatus: document.getElementById("actionStatus"),
 };
 
 // ---- Helpers ---------------------------------------------------------------
@@ -74,13 +84,41 @@ function esc(s) {
 function loadVisible() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (Array.isArray(saved) && saved.length) return saved;
+    if (Array.isArray(saved)) return saved.filter((key) => METRICS.some((m) => m.key === key));
   } catch {}
   return [...DEFAULT_VISIBLE];
 }
 
 function saveVisible() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.visible));
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.visible)); } catch {}
+}
+
+function notice(message = "") {
+  el.menuNotice.textContent = message;
+  el.menuNotice.classList.toggle("hidden", !message);
+}
+
+function formatDate(date) {
+  if (!date) return "";
+  return new Date(date + "T00:00:00").toLocaleDateString(undefined, {
+    weekday: "long", month: "long", day: "numeric",
+  });
+}
+
+function plateChanged() {
+  state.legacyTotals = null;
+  el.actionStatus.textContent = "";
+}
+
+function setPhoto(photo) {
+  ++photoRequest;
+  state.photo = photo || null;
+  el.photoInput.value = "";
+  if (photo) el.photoPreview.src = photo;
+  else el.photoPreview.removeAttribute("src");
+  el.photoPreview.classList.toggle("hidden", !photo);
+  el.photoPlaceholder.classList.toggle("hidden", !!photo);
+  el.removePhotoBtn.classList.toggle("hidden", !photo);
 }
 
 // Parse a numeric nutrient string like "2.2g" or "637.1mg" or "222".
@@ -121,12 +159,23 @@ function round(n, d = 0) {
 
 // ---- Init ------------------------------------------------------------------
 async function init() {
-  const res = await fetch("/api/halls");
-  state.halls = (await res.json()).halls;
+  // Render useful empty states even when the API is unavailable.
+  state.halls = Object.keys(HALL_THEMES);
   renderHallTabs();
-  await selectHall(state.halls[0], { skipWarn: true });
   renderPlate();
   renderOverview();
+  try {
+    const res = await fetch("/api/halls");
+    if (!res.ok) throw new Error("Could not load dining halls");
+    const data = await res.json();
+    if (!Array.isArray(data.halls) || !data.halls.length) throw new Error("No dining halls available");
+    state.halls = data.halls;
+  } catch (err) {
+    console.error(err);
+  }
+  // Do not override a hall the user picked while initialization was pending.
+  if (!state.hall) await selectHall(state.halls[0], { skipWarn: true });
+  else renderHallTabs();
 }
 
 function renderHallTabs() {
@@ -135,6 +184,7 @@ function renderHallTabs() {
     const btn = document.createElement("button");
     btn.textContent = hall;
     btn.classList.toggle("active", hall === state.hall);
+    btn.setAttribute("aria-pressed", String(hall === state.hall));
     btn.onclick = () => selectHall(hall);
     el.hallTabs.appendChild(btn);
   }
@@ -142,85 +192,119 @@ function renderHallTabs() {
 
 function plateIsEmpty() {
   return state.rows.length === 0 && !state.photo &&
-    el.plateName.value.trim() === "Unnamed Plate";
+    !el.plateName.value.trim();
 }
 
-async function selectHall(hall, { skipWarn = false } = {}) {
-  if (hall === state.hall) return;
+async function selectHall(hall, { skipWarn = false, force = false, keepPlate = false } = {}) {
+  if (hall === state.hall && !force) return;
   // Warn if switching halls would clear a non-empty plate.
-  if (!skipWarn && !plateIsEmpty()) {
+  if (!skipWarn && !keepPlate && !plateIsEmpty()) {
     const ok = confirm(
       "Warning: switching dining halls will clear your current plate"
     );
     if (!ok) return;
+  }
+  if (!keepPlate) {
+    ++plateLoadRequest;
     clearPlate();
   }
+  const request = ++menuRequest;
+  menuController?.abort();
+  menuController = new AbortController();
   state.hall = hall;
+  state.items = [];
+  state.loading = true;
+  if (!keepPlate) state.date = null;
+  applyHallTheme(hall);
+  el.plateName.placeholder = `e.g. Lunch at ${hall}`;
+  el.trackerDate.textContent = keepPlate
+    ? `Saved meal · ${formatDate(state.date) || "Date unavailable"}`
+    : `${hall} · Loading menu…`;
+  notice();
+  closeAllDropdowns();
   renderHallTabs();
-  try {
-    const res = await fetch(`/api/menu/${encodeURIComponent(hall)}`);
-    const data = await res.json();
-    state.items = data.items || [];
-    state.date = data.date;
-    el.trackerDate.textContent = data.date
-      ? `${hall} · ${new Date(data.date + "T00:00:00").toLocaleDateString(undefined, {
-          weekday: "long", month: "long", day: "numeric",
-        })}`
-      : hall;
-  } catch (err) {
-    console.error(err);
-    el.trackerDate.textContent = `${hall} · failed to load menu`;
-    state.items = [];
-  }
-  // Re-render any open food dropdowns against the new hall's items.
   renderPlate();
   renderOverview();
+  try {
+    const res = await fetch(`/api/menu/${encodeURIComponent(hall)}`, { signal: menuController.signal });
+    if (!res.ok) throw new Error("Menu request failed");
+    const data = await res.json();
+    if (request !== menuRequest) return;
+    state.items = Array.isArray(data.items) ? data.items : [];
+    if (!keepPlate) {
+      state.date = data.date;
+      el.trackerDate.textContent = data.date ? `${hall} · ${formatDate(data.date)}` : hall;
+    }
+    if (!state.items.length) notice("No menu is available for this dining hall. Try another hall or reload to retry.");
+    else if (data.date !== new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" })) {
+      notice(`Showing the latest available menu (${data.date}). Today's menu is not available yet.`);
+    }
+  } catch (err) {
+    if (request !== menuRequest) return;
+    console.error(err);
+    if (!keepPlate) el.trackerDate.textContent = `${hall} · Menu unavailable`;
+    notice("We couldn't load the menu. Check your connection and reload to retry, or choose another hall.");
+    state.items = [];
+  } finally {
+    if (request === menuRequest) {
+      state.loading = false;
+      renderPlate();
+      renderOverview();
+    }
+  }
 }
 
 function clearPlate() {
   state.rows = [];
   state.photo = null;
   state.loadedPlateId = null;
-  el.plateName.value = "Unnamed Plate";
-  el.photoPreview.src = "";
-  el.photoPreview.classList.add("hidden");
-  el.photoPlaceholder.classList.remove("hidden");
-  el.removePhotoBtn.classList.add("hidden");
+  state.legacyTotals = null;
+  el.plateName.value = "";
+  el.actionStatus.textContent = "";
+  setPhoto(null);
 }
 
 // ---- Photo -----------------------------------------------------------------
 el.photoInput.onchange = () => {
   const file = el.photoInput.files[0];
   if (!file) return;
+  if (!file.type.startsWith("image/") || file.size > 8 * 1024 * 1024) {
+    el.actionStatus.textContent = "Choose an image smaller than 8 MB.";
+    el.photoInput.value = "";
+    return;
+  }
+  const request = ++photoRequest;
   const reader = new FileReader();
   reader.onload = () => {
-    state.photo = reader.result;
-    el.photoPreview.src = reader.result;
-    el.photoPreview.classList.remove("hidden");
-    el.photoPlaceholder.classList.add("hidden");
-    el.removePhotoBtn.classList.remove("hidden");
+    if (request !== photoRequest) return;
+    setPhoto(reader.result);
+    el.actionStatus.textContent = "Photo added. Select the foods below to calculate nutrition.";
+  };
+  reader.onerror = () => {
+    if (request === photoRequest) el.actionStatus.textContent = "This photo couldn't be read. Please choose another image.";
   };
   reader.readAsDataURL(file);
 };
 
 el.removePhotoBtn.onclick = (e) => {
   e.preventDefault();
-  state.photo = null;
-  el.photoInput.value = "";
-  el.photoPreview.src = "";
-  el.photoPreview.classList.add("hidden");
-  el.photoPlaceholder.classList.remove("hidden");
-  el.removePhotoBtn.classList.add("hidden");
+  setPhoto(null);
+};
+el.photoBox.onkeydown = (e) => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.photoInput.click(); }
 };
 
 // ---- Plate rows ------------------------------------------------------------
 el.addFoodBtn.onclick = () => {
+  if (state.loading || !state.items.length) return;
+  plateChanged();
   state.rows.push({ uid: uidCounter++, item: null, servings: 1 });
   renderPlate();
   renderOverview();
 };
 
 function renderPlate() {
+  el.addFoodBtn.disabled = state.loading || !state.items.length;
   el.emptyHelp.classList.toggle("hidden", state.rows.length > 0);
 
   el.plateItems.innerHTML = state.rows
@@ -253,12 +337,15 @@ function renderPlate() {
     const portion = node.querySelector(".portion-input");
     if (portion) {
       portion.oninput = () => {
-        row.servings = Math.max(0, parseFloat(portion.value) || 0);
+        plateChanged();
+        const amount = parseFloat(portion.value);
+        row.servings = Number.isFinite(amount) ? Math.max(0, amount) : 0;
         renderOverview();
       };
     }
 
     node.querySelector(".remove-food").onclick = () => {
+      plateChanged();
       state.rows = state.rows.filter((r) => r.uid !== row.uid);
       renderPlate();
       renderOverview();
@@ -269,12 +356,11 @@ function renderPlate() {
 function foodRowHtml(row) {
   const item = row.item;
   const foodLabel = item
-    ? `<span class="food-label" title="${esc(item.dish_name)}">${esc(item.dish_name)}</span>`
-    : `<span class="food-label placeholder">Select food…</span>`;
+    ? `<button type="button" class="food-label" title="${esc(item.dish_name)}">${esc(item.dish_name)}</button>`
+    : `<button type="button" class="food-label placeholder">Select food…</button>`;
 
   let portion = "";
   if (item) {
-    const { unit } = parseServing(item.serving_size);
     portion = `
       <input type="number" class="portion-input" min="0" step="0.25"
              value="${row.servings}" aria-label="Number of servings" />
@@ -309,22 +395,23 @@ function renderOptions(container, query, row) {
 
   if (!matches.length) {
     container.innerHTML =
-      `<div class="food-none">no food found in ${esc(state.hall)} for today</div>`;
+      `<div class="food-none">${state.loading ? "Loading menu…" : `No matching food in the available ${esc(state.hall)} menu.`}</div>`;
     return;
   }
 
   container.innerHTML = matches
     .map((it) => {
       const cal = it.calories ? `${it.calories} cal` : "";
-      return `<div class="food-option" data-id="${it.id}">
+      return `<button type="button" class="food-option" data-id="${it.id}">
         ${esc(it.dish_name)}<span class="opt-meta">${esc(cal)}</span>
-      </div>`;
+      </button>`;
     })
     .join("");
 
   container.querySelectorAll(".food-option").forEach((opt) => {
     opt.onclick = () => {
       const item = state.items.find((i) => i.id === Number(opt.dataset.id));
+      plateChanged();
       row.item = item;
       row.servings = 1; // default to one serving on selection
       closeAllDropdowns();
@@ -345,25 +432,30 @@ document.addEventListener("click", (e) => {
 // ---- Nutrition aggregation -------------------------------------------------
 function aggregate() {
   const totals = {};
-  for (const m of METRICS) totals[m.key] = { sum: 0, count: 0 };
+  for (const m of METRICS) totals[m.key] = { sum: 0, count: 0, missing: 0 };
 
   for (const row of state.rows) {
     if (!row.item) continue;
     const s = row.servings || 0;
+    if (s <= 0) continue;
     for (const m of METRICS) {
       const raw = row.item[m.field];
-      if (raw == null || raw === "") continue;
+      if (raw == null || String(raw).trim() === "" || (m.kind !== "carbon" && !/-?\d+(\.\d+)?/.test(String(raw)))) {
+        totals[m.key].missing += 1;
+        continue;
+      }
       if (m.kind === "carbon") {
         const score = CARBON_SCORE[String(raw).trim().toUpperCase()];
         if (score) {
           totals[m.key].sum += score;
           totals[m.key].count += 1;
-        }
+        } else totals[m.key].missing += 1;
       } else if (m.kind === "avg") {
         totals[m.key].sum += parseNum(raw);
         totals[m.key].count += 1;
       } else {
         totals[m.key].sum += parseNum(raw) * s;
+        totals[m.key].count += 1;
       }
     }
   }
@@ -372,6 +464,7 @@ function aggregate() {
 
 function metricDisplay(m, agg) {
   const t = agg[m.key];
+  if (t.missing || !t.count) return "—";
   if (m.kind === "carbon") {
     if (!t.count) return "—";
     const avg = t.sum / t.count;
@@ -384,17 +477,22 @@ function metricDisplay(m, agg) {
 }
 
 function renderOverview() {
+  const chosen = state.rows.filter((r) => r.item && r.servings > 0);
+  el.saveBtn.disabled = !chosen.length || state.saving;
+  el.nutritionNote.textContent = state.legacyTotals
+    ? "Saved totals from an older meal. Per-food nutrition was not recorded; editing may make totals unavailable."
+    : chosen.length ? "Based on the portions you enter. — means nutrition data is unavailable." : "Add foods to see your meal's nutrition.";
   const agg = aggregate();
   const visible = METRICS.filter((m) => state.visible.includes(m.key));
   if (!visible.length) {
     el.overview.innerHTML =
-      `<p class="overview-empty">No metrics selected. Use “Choose metrics”.</p>`;
+      `<p class="overview-empty">No metrics selected. Use Customize to choose some.</p>`;
     return;
   }
   el.overview.innerHTML = visible
     .map((m) => `
       <div class="metric-card">
-        <div class="metric-value">${metricDisplay(m, agg)}</div>
+        <div class="metric-value">${esc(state.legacyTotals?.[m.key] ?? metricDisplay(m, agg))}</div>
         <div class="metric-label">${esc(m.label)}</div>
       </div>`)
     .join("");
@@ -421,23 +519,23 @@ el.metricsBtn.onclick = () => {
       renderOverview();
     };
   });
-  el.metricsModal.classList.remove("hidden");
+  openModal(el.metricsModal, el.metricsClose);
 };
-el.metricsClose.onclick = () => el.metricsModal.classList.add("hidden");
+el.metricsClose.onclick = () => closeModal(el.metricsModal);
 
 // ---- Save / Load -----------------------------------------------------------
 el.saveBtn.onclick = async () => {
-  const chosen = state.rows.filter((r) => r.item);
+  if (state.saving) return;
+  const chosen = state.rows.filter((r) => r.item && r.servings > 0);
   if (!chosen.length) {
-    alert("Add at least one food before saving.");
+    el.actionStatus.textContent = "Add a food with a portion greater than zero before saving.";
     return;
   }
   const agg = aggregate();
   const totals = {};
-  for (const m of METRICS) totals[m.key] = metricDisplay(m, agg);
-
+  for (const m of METRICS) totals[m.key] = state.legacyTotals?.[m.key] ?? metricDisplay(m, agg);
   const payload = {
-    name: el.plateName.value.trim() || "Unnamed Plate",
+    name: el.plateName.value.trim() || `${state.hall} meal`,
     dining_hall: state.hall,
     menu_date: state.date,
     image: state.photo,
@@ -446,133 +544,134 @@ el.saveBtn.onclick = async () => {
       dish_name: r.item.dish_name,
       serving_size: r.item.serving_size,
       servings: r.servings,
+      // Immutable per-serving values; a later menu refresh must not rewrite history.
+      nutrition: r.item.nutritionUnavailable ? null : Object.fromEntries(
+        METRICS.map((m) => [m.field, r.item[m.field] ?? null])
+      ),
     })),
     totals,
   };
-
-  el.saveBtn.disabled = true;
+  const request = menuRequest;
+  state.saving = true;
+  renderOverview();
   el.saveBtn.textContent = "Saving…";
   try {
     const res = await fetch("/api/plates", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error("save failed");
+    if (!res.ok) throw new Error("Save failed");
     const saved = await res.json();
-    state.loadedPlateId = saved.id;
-    el.saveBtn.textContent = "Saved ✓";
-    setTimeout(() => (el.saveBtn.textContent = "Save"), 1500);
+    if (request === menuRequest) {
+      state.loadedPlateId = saved.id;
+      el.actionStatus.textContent = "Meal saved. Find it in your meal history.";
+    }
   } catch (err) {
     console.error(err);
-    alert("Could not save plate.");
-    el.saveBtn.textContent = "Save";
+    if (request === menuRequest) el.actionStatus.textContent = "Your meal couldn't be saved. Please try again.";
   } finally {
-    el.saveBtn.disabled = false;
+    state.saving = false;
+    el.saveBtn.textContent = "Save meal";
+    renderOverview();
   }
 };
 
 el.loadBtn.onclick = async () => {
-  el.loadList.innerHTML = `<p class="load-empty">Loading…</p>`;
-  el.loadModal.classList.remove("hidden");
+  el.loadList.innerHTML = `<p class="load-empty">Loading your meals…</p>`;
+  openModal(el.loadModal, el.loadClose);
   try {
     const res = await fetch("/api/plates");
+    if (!res.ok) throw new Error("History request failed");
     const { plates } = await res.json();
+    if (!Array.isArray(plates)) throw new Error("Invalid meal history");
     if (!plates.length) {
-      el.loadList.innerHTML = `<p class="load-empty">No saved plates yet.</p>`;
+      el.loadList.innerHTML = `<p class="load-empty">Your first meal is waiting to be saved.</p>`;
       return;
     }
-    el.loadList.innerHTML = plates
-      .map((p) => `
-        <div class="load-item" data-id="${p.id}">
-          <div class="load-thumb"></div>
-          <div class="load-info">
-            <div class="ln">${esc(p.name)}</div>
-            <div class="lm">${esc(p.dining_hall || "")} · ${esc(
-              (p.menu_date || "").slice(0, 10)
-            )} · ${p.items.length} items</div>
-          </div>
-        </div>`)
-      .join("");
+    el.loadList.innerHTML = plates.map((p) => `
+      <button type="button" class="load-item" data-id="${Number(p.id)}">
+        <span class="load-info"><span class="ln">${esc(p.name)}</span>
+          <span class="lm">${esc(p.dining_hall || "")} · ${esc((p.menu_date || "").slice(0, 10))} · ${p.items.length} foods</span>
+        </span>
+      </button>`).join("");
     el.loadList.querySelectorAll(".load-item").forEach((node) => {
       node.onclick = () => loadPlate(Number(node.dataset.id));
     });
   } catch (err) {
     console.error(err);
-    el.loadList.innerHTML = `<p class="load-empty">Failed to load plates.</p>`;
+    el.loadList.innerHTML = `<p class="load-empty">We couldn't load your meals. Close this window and try again.</p>`;
   }
 };
-el.loadClose.onclick = () => el.loadModal.classList.add("hidden");
+el.loadClose.onclick = () => closeModal(el.loadModal);
 
 async function loadPlate(id) {
+  if (!plateIsEmpty() && !confirm("Replace your current plate with this saved meal?")) return;
+  const request = ++plateLoadRequest;
   try {
     const res = await fetch(`/api/plates/${id}`);
-    if (!res.ok) throw new Error("not found");
+    if (!res.ok) throw new Error("Meal not found");
     const plate = await res.json();
-
-    // Switch to the plate's hall so food lookups resolve against that menu.
-    if (plate.dining_hall && plate.dining_hall !== state.hall) {
-      state.hall = plate.dining_hall;
-      renderHallTabs();
-      const mRes = await fetch(`/api/menu/${encodeURIComponent(plate.dining_hall)}`);
-      const data = await mRes.json();
-      state.items = data.items || [];
-      state.date = data.date;
-      el.trackerDate.textContent = `${plate.dining_hall} · ${(plate.menu_date || "").slice(0, 10)}`;
-    }
-
-    el.plateName.value = plate.name || "Unnamed Plate";
-
-    // Photo
-    if (plate.image) {
-      state.photo = plate.image;
-      el.photoPreview.src = plate.image;
-      el.photoPreview.classList.remove("hidden");
-      el.photoPlaceholder.classList.add("hidden");
-      el.removePhotoBtn.classList.remove("hidden");
-    } else {
-      state.photo = null;
-      el.photoPreview.classList.add("hidden");
-      el.photoPlaceholder.classList.remove("hidden");
-      el.removePhotoBtn.classList.add("hidden");
-    }
-
-    // Rebuild rows, re-linking to today's menu item by id or name so
-    // nutrition still aggregates. Fall back to the stored snapshot.
+    if (request !== plateLoadRequest) return;
+    if (!Array.isArray(plate.items) || !state.halls.includes(plate.dining_hall)) throw new Error("Invalid saved meal");
+    state.date = plate.menu_date || null;
     state.rows = plate.items.map((saved) => {
-      const live =
-        state.items.find((i) => i.id === saved.id) ||
-        state.items.find((i) => i.dish_name === saved.dish_name);
+      const hasSnapshot = saved.nutrition && typeof saved.nutrition === "object";
+      const nutrition = Object.fromEntries(METRICS.map((m) => [m.field, hasSnapshot ? saved.nutrition[m.field] ?? null : null]));
       return {
         uid: uidCounter++,
-        item: live || {
-          id: saved.id,
-          dish_name: saved.dish_name,
-          serving_size: saved.serving_size,
+        item: {
+          id: saved.id, dish_name: saved.dish_name, serving_size: saved.serving_size,
+          ...nutrition, nutritionUnavailable: !hasSnapshot,
         },
-        servings: saved.servings ?? 1,
+        servings: Number.isFinite(saved.servings) ? Math.max(0, saved.servings) : 1,
       };
     });
+    // Older saves have aggregate totals but no per-food snapshot. Keep those
+    // totals until the user edits food/portions, instead of substituting today's menu.
+    state.legacyTotals = state.rows.some((r) => r.item.nutritionUnavailable) ? plate.totals : null;
     state.loadedPlateId = plate.id;
-
-    el.loadModal.classList.add("hidden");
-    renderPlate();
-    renderOverview();
+    el.plateName.value = plate.name || "";
+    setPhoto(plate.image);
+    el.actionStatus.textContent = "Saved meal loaded.";
+    closeModal(el.loadModal);
+    await selectHall(plate.dining_hall, { skipWarn: true, force: true, keepPlate: true });
   } catch (err) {
+    if (request !== plateLoadRequest) return;
     console.error(err);
-    alert("Could not load plate.");
+    el.loadList.innerHTML = `<p class="load-empty">This meal couldn't be loaded. Close this window and try again.</p>`;
   }
+}
+
+// Keep keyboard focus inside dialogs and return it to the opening control.
+let modalOpener = null;
+function openModal(modal, firstControl) {
+  modalOpener = document.activeElement;
+  modal.classList.remove("hidden");
+  firstControl.focus();
+}
+function closeModal(modal) {
+  modal.classList.add("hidden");
+  modalOpener?.focus();
 }
 
 // Close modals on backdrop click / Escape
 [el.metricsModal, el.loadModal].forEach((m) => {
-  m.onclick = (e) => { if (e.target === m) m.classList.add("hidden"); };
+  m.onclick = (e) => { if (e.target === m) closeModal(m); };
 });
 document.addEventListener("keydown", (e) => {
+  const modal = [el.metricsModal, el.loadModal].find((m) => !m.classList.contains("hidden"));
+  if (e.key === "Tab" && modal) {
+    const controls = [...modal.querySelectorAll('button:not(:disabled), input:not(:disabled), [tabindex="0"]')];
+    const first = controls[0], last = controls[controls.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
   if (e.key === "Escape") {
-    el.metricsModal.classList.add("hidden");
-    el.loadModal.classList.add("hidden");
+    closeAllDropdowns();
+    [el.metricsModal, el.loadModal].forEach((modal) => {
+      if (!modal.classList.contains("hidden")) closeModal(modal);
+    });
   }
 });
 
-init();
+const initPromise = init();

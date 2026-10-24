@@ -6,23 +6,23 @@
     <title>UMass Dining Menus &amp; Nutrition</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="hall-theme.css" />
   </head>
   <body>
-    <header class="site-header">
-      <h1>UMass Dining</h1>
-      <p class="subtitle">
-        Today's menus &amp; nutrition facts &middot;
-        <a href="/" class="header-link">Meal tracker</a> &middot;
-        <a href="/dev.html" class="header-link">Developer view</a>
-      </p>
-    </header>
-
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="Ueat home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M6 15h20c0 7-4 11-10 11S6 22 6 15Z" stroke="currentColor" stroke-width="2"/><path d="m12 5-1 5m6-6-1 6m6-5-1 5M11 27h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>Ueat<span class="brand-dot">.</span></a>
+    <nav class="topbar-links" aria-label="Main navigation"><span class="campus-label">UMass Amherst</span><a href="index.html">Meal tracker &nearr;</a></nav>
+  </header>
+  <section class="hall-hero" id="hallHero" aria-labelledby="hallTitle">
+    <div class="hall-photo" id="hallPhoto" aria-hidden="true"></div><div class="hall-shade" aria-hidden="true"></div>
+    <div class="hero-content"><p class="eyebrow">Good food. A little more insight.</p><h1 id="hallTitle">Your campus. Your plate.</h1><p class="hero-detail"><span id="hallArea">UMass Amherst dining</span><span>Choose your dining commons below</span></p></div>
     <nav class="hall-tabs" id="hallTabs" aria-label="Dining halls"></nav>
+  </section>
 
     <main class="container">
       <div class="status-bar">
         <span id="menuDate" class="menu-date"></span>
-        <span id="statusMsg" class="status-msg"></span>
+        <span id="statusMsg" class="status-msg" role="status" aria-live="polite"></span>
         <button id="refreshBtn" class="refresh-btn">Refresh</button>
       </div>
 
@@ -40,6 +40,7 @@
       </div>
     </div>
 
+    <script src="hall-theme.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
