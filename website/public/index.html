@@ -32,6 +32,8 @@
             <img id="photoPreview" class="photo-preview hidden" alt="Your plate" />
           </label>
           <div class="photo-footer"><p>A visual record of your meal. Add foods below to calculate nutrition.</p><button id="removePhotoBtn" class="link-btn hidden">Remove photo</button></div>
+          <button id="generatePlateBtn" class="generate-btn hidden"><span class="gen-icon" aria-hidden="true">✨</span> Generate plate from image</button>
+          <p id="generateStatus" class="action-status" role="status" aria-live="polite"></p>
         </section>
         <section class="panel plate-section" aria-labelledby="plateHeading">
           <div class="plate-header"><div><p class="eyebrow">Build your meal</p><h2 id="plateHeading">Your plate</h2></div><button id="addFoodBtn" class="add-btn" disabled>+ Add food</button></div>

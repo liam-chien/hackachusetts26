@@ -53,6 +53,8 @@ let menuRequest = 0;
 let plateLoadRequest = 0;
 let photoRequest = 0;
 let menuController;
+let generateAvailable = false; // vision model present on the server
+let generating = false;
 
 const el = {
   hallTabs: document.getElementById("hallTabs"),
@@ -62,6 +64,8 @@ const el = {
   photoPlaceholder: document.getElementById("photoPlaceholder"),
   photoPreview: document.getElementById("photoPreview"),
   removePhotoBtn: document.getElementById("removePhotoBtn"),
+  generatePlateBtn: document.getElementById("generatePlateBtn"),
+  generateStatus: document.getElementById("generateStatus"),
   plateName: document.getElementById("plateName"),
   addFoodBtn: document.getElementById("addFoodBtn"),
   emptyHelp: document.getElementById("emptyHelp"),
@@ -131,6 +135,10 @@ function setPhoto(photo) {
   el.photoPreview.classList.toggle("hidden", !photo);
   el.photoPlaceholder.classList.toggle("hidden", !!photo);
   el.removePhotoBtn.classList.toggle("hidden", !photo);
+  // "Generate plate from image" is only offered when a photo is present and
+  // the vision model is available on the server.
+  el.generatePlateBtn.classList.toggle("hidden", !(photo && generateAvailable));
+  if (!photo) el.generateStatus.textContent = "";
 }
 
 // Parse a numeric nutrient string like "2.2g" or "637.1mg" or "222".
@@ -175,6 +183,7 @@ async function init() {
   state.halls = Object.keys(HALL_THEMES);
   renderHallTabs();
   loadProfileAndBaseline(); // fire-and-forget; re-renders when ready
+  checkGenerateAvailable(); // fire-and-forget; shows the button if model is ready
   renderPlate();
   renderOverview();
   try {
@@ -428,6 +437,74 @@ el.photoBox.onkeydown = (e) => {
 
 // Re-check the duplicate-name rule as the user types the meal name.
 el.plateName.oninput = () => renderOverview();
+
+// ---- Generate plate from image ---------------------------------------------
+// Ask the server whether the vision model is installed; the button only shows
+// when it is (and a photo is present).
+async function checkGenerateAvailable() {
+  try {
+    const res = await fetch("/api/generate-plate/status");
+    if (res.ok) generateAvailable = !!(await res.json()).available;
+  } catch { generateAvailable = false; }
+  // Reflect availability on the currently-shown photo state.
+  el.generatePlateBtn.classList.toggle("hidden", !(state.photo && generateAvailable));
+}
+
+el.generatePlateBtn.onclick = async () => {
+  if (generating || !state.photo) return;
+  if (!state.items.length) {
+    el.generateStatus.textContent = "Load this hall's menu first.";
+    return;
+  }
+  // Replacing a plate that already has food should be confirmed.
+  const hasFood = state.rows.some((r) => r.item);
+  if (hasFood && !confirm("Replace the current foods with items detected from the photo?")) return;
+
+  generating = true;
+  el.generatePlateBtn.disabled = true;
+  el.generatePlateBtn.classList.add("hidden");
+  el.generateStatus.textContent = "Analyzing your plate photo… this can take a moment.";
+  try {
+    const res = await fetch("/api/generate-plate", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: state.photo, hall: state.hall }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Generation failed");
+
+    // Build plate rows from matched items, re-linking to the live menu item so
+    // nutrition and allergen/avoid warnings work exactly like manual adds.
+    plateChanged();
+    state.rows = (data.items || []).map((m) => {
+      const live = state.items.find((i) => i.id === m.id) ||
+        state.items.find((i) => i.dish_name === m.dish_name);
+      return {
+        uid: uidCounter++,
+        item: live || { id: m.id, dish_name: m.dish_name, serving_size: m.serving_size, nutritionUnavailable: true },
+        servings: Number.isFinite(m.servings) ? Math.max(0.25, m.servings) : 1,
+      };
+    });
+    renderPlate();
+    renderOverview();
+
+    const n = state.rows.length;
+    const skipped = (data.unmatched || []).length;
+    el.generateStatus.textContent = n
+      ? `Added ${n} food${n === 1 ? "" : "s"} from your photo` +
+        (skipped ? `; ${skipped} item${skipped === 1 ? "" : "s"} couldn't be matched to the menu.` : ". Review portions below.")
+      : "No menu items could be matched to the photo. Add foods manually below.";
+  } catch (err) {
+    console.error(err);
+    el.generateStatus.textContent =
+      err.message && /vision model/i.test(err.message)
+        ? err.message
+        : "Couldn't analyze the photo. Please try again.";
+  } finally {
+    generating = false;
+    el.generatePlateBtn.disabled = false;
+    el.generatePlateBtn.classList.toggle("hidden", !(state.photo && generateAvailable));
+  }
+};
 
 // ---- Plate rows ------------------------------------------------------------
 el.addFoodBtn.onclick = () => {
@@ -826,7 +903,9 @@ el.saveBtn.onclick = async () => {
     state.existingNames.set(String(saved.name || name).trim().toLowerCase(), saved.id);
     if (request === menuRequest) {
       state.loadedPlateId = saved.id;
-      el.actionStatus.textContent = "Meal saved. Find it in your meal history.";
+      el.actionStatus.textContent = "Meal saved. Taking you to your meal history…";
+      // Give the confirmation a beat to show, then go to the history page.
+      setTimeout(() => { location.href = "history.html"; }, 700);
     }
   } catch (err) {
     console.error(err);

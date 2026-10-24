@@ -1,4 +1,6 @@
 const path = require("path");
+const os = require("os");
+const fs = require("fs");
 const express = require("express");
 const { DINING_HALLS, scrapeHall } = require("./scraper");
 const {
@@ -16,6 +18,7 @@ const {
   saveProfile,
   getPlatesBetween,
 } = require("./db");
+const { generatePlate, visionInstalled } = require("./model_bridge");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -150,6 +153,54 @@ app.put("/api/profile", (req, res) => {
   } catch (err) {
     console.error("[profile] save failed:", err.message);
     res.status(400).json({ error: "Could not save profile" });
+  }
+});
+
+// --- Image -> plate (vision model + menu matcher) ---
+
+// Whether the local vision model is installed, so the UI can show a helpful
+// message instead of making a request that will fail.
+app.get("/api/generate-plate/status", (_req, res) => {
+  res.json({ available: visionInstalled() });
+});
+
+// Decode an uploaded photo, run it through the vision model + matcher against
+// the hall's scraped menu, and return matched plate items (with servings).
+app.post("/api/generate-plate", async (req, res) => {
+  const { image, hall: rawHall } = req.body || {};
+  const hall = normalizeHall(rawHall);
+  if (!hall) return res.status(400).json({ error: "Unknown or missing dining hall" });
+  if (typeof image !== "string" || !image.startsWith("data:image/")) {
+    return res.status(400).json({ error: "A plate photo is required" });
+  }
+
+  // The hall's current menu is what we match against.
+  const date = getLatestDate(hall);
+  const items = date ? getMenu(hall, date) : [];
+  if (!items.length) {
+    return res.status(409).json({ error: `No menu is loaded for ${hall}.` });
+  }
+
+  // Write the data URL to a temp JPEG for the Python vision CLI.
+  const base64 = image.slice(image.indexOf(",") + 1);
+  const tmpImg = path.join(os.tmpdir(), `plate_${Date.now()}.jpg`);
+  try {
+    fs.writeFileSync(tmpImg, Buffer.from(base64, "base64"));
+  } catch (err) {
+    return res.status(400).json({ error: "Could not read the uploaded image" });
+  }
+
+  try {
+    const result = await generatePlate({ imagePath: tmpImg, hall, date, items });
+    res.json({ hall, date, ...result });
+  } catch (err) {
+    console.error("[generate-plate] failed:", err.message);
+    if (err.code === "VISION_NOT_INSTALLED") {
+      return res.status(503).json({ error: err.message, code: "VISION_NOT_INSTALLED" });
+    }
+    res.status(500).json({ error: "Could not analyze the photo. Please try again." });
+  } finally {
+    fs.unlink(tmpImg, () => {});
   }
 });
 

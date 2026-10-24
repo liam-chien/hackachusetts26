@@ -174,3 +174,43 @@ See `db.js` for the full column list.
   snapshots retain their stored aggregate totals until food or portions are edited;
   unavailable values are shown as an em dash rather than zero.
 - Run `npm test` for the menu race and nutrition-history regression checks.
+
+## Generate plate from image (vision + matcher)
+
+When a photo is added to a plate on the tracker, a **Generate plate from image**
+button appears (only if the vision model is installed on the server). It runs a
+two-stage pipeline:
+
+1. **Vision model** (`model/vision model/recognize_food.py`) — a local
+   Qwen3-VL food model (via llama.cpp) classifies the photo into generic foods
+   with estimated gram weights.
+2. **Menu matcher** (`src/matching/menu_mathcer.py`) — maps each generic food
+   to the most likely item on the hall's scraped menu.
+
+The server bridges to these Python CLIs in `website/model_bridge.js`, converts
+the matcher's gram estimates into serving multipliers (using each item's
+`serving_size`), and returns plate items the tracker fills in. Unmatched foods
+are reported so you can add them manually.
+
+### Server endpoints
+
+- `GET /api/generate-plate/status` → `{ available }` (is the vision model installed?)
+- `POST /api/generate-plate` `{ image (data URL), hall }` → `{ items[], unmatched[] }`
+
+### Setup (optional; needed only for this feature)
+
+The vision model is a heavy local dependency (~2.6 GB of weights plus a
+`llama-server` binary) and is **not** required to run the rest of the site.
+If it isn't installed, the button stays hidden and the endpoint returns a clear
+"not installed" message.
+
+```bash
+# one-time: Python deps for the matcher (+ vision) used by the server bridge
+python3 -m venv .venv-models
+.venv-models/bin/pip install rapidfuzz            # matcher
+# vision model weights + runtime:
+cd "model/vision model" && python3 setup.py       # downloads ~2.6 GB
+```
+
+The server prefers `.venv-models/bin/python` if present, else falls back to
+system `python3`.
