@@ -1,0 +1,1 @@
+This is the folder for the frontend and database for the information
