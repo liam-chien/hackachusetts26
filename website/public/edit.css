@@ -1,0 +1,8 @@
+/* Meal edit page — mostly reuses tracker.css. */
+.danger-btn {
+  min-height: 43px; border-radius: 10px; border: 1px solid #e3c4c4;
+  padding: 11px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
+  background: #fff; color: #9a3434;
+}
+.danger-btn:hover { background: #fbeeee; }
+.tracker-heading .tracker-date { font-weight: 600; color: #7a5a38; }

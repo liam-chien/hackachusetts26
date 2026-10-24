@@ -48,8 +48,47 @@ Then open http://localhost:3000.
 ## Pages
 
 - `/` — **Meal Tracker** (front page): track what's on your plate at a hall.
+- `/history.html` — **Meal history**: trend chart (week/month/year/all) + a searchable, recency-sorted list of saved meals.
+- `/edit.html?id=<id>` — **Edit meal**: change a saved meal's foods/portions/photo/name. The original date is preserved (editing never moves a meal to today). Also supports delete.
 - `/menu.html` — browse full menus & nutrition by hall/meal.
 - `/dev.html` — raw database table (developer tool).
+
+## Meal history & editing
+
+- The history page reads every saved plate, derives numeric nutrition from each
+  meal's per-food snapshot (`public/nutrition.js`, shared with the tracker), and
+  plots one bar per meal for the chosen metric and time range.
+- The list is sorted newest-first and searches across name, hall, date, and food
+  names. Clicking a meal opens the edit page.
+- Editing uses `PUT /api/plates/:id`, which updates name/hall/image/items/totals
+  but **preserves `menu_date` and `created_at`**.
+
+## Account & preferences
+
+`/account.html` stores a single user profile (there is no auth yet):
+
+- **Name**
+- **Allergen categories** (Milk, Eggs, Gluten, Wheat, Soy, Corn, Sesame, Tree
+  Nuts, Peanuts, Fish, Shellfish) — the categories present in the scraped data.
+- **Foods to avoid** — free-text terms matched against dish names.
+- **Nutrition goals** — addable chips, each a macronutrient + target + recurrence
+  (per meal / per day / per week).
+
+These drive two things on the meal tracker:
+
+- **Goal progress bars** render in the Nutrition overview. Per-meal goals track
+  the current plate; per-day/week goals add the current plate on top of what
+  was already eaten in that window (from saved meals, via `/api/plates-between`).
+- **Allergen / avoided warnings**: any plate food containing a chosen allergen
+  or an avoided term gets a red highlight and a red "!" badge, with a line
+  explaining why, plus a summary banner above the plate.
+
+## Demo data
+
+`node seed_demo.js` clears all saved plates and generates ~11 example meals
+spread across the past few months, using real scraped foods (scrapes menus
+first if the DB is empty) so nutrition is realistic. Each meal is dated in the
+past via its `menu_date` and `created_at`.
 
 ## Meal Tracker (front page)
 
@@ -95,6 +134,11 @@ raw `menu_items` table in tabular form, straight from the database:
 - `POST /api/plates` → save a tracked plate `{ name, dining_hall, menu_date, image, items[], totals }`
 - `GET /api/plates` → list saved plates (images omitted; `?images=1` to include)
 - `GET /api/plates/:id` → one saved plate, including its photo
+- `PUT /api/plates/:id` → update a saved plate in place (preserves `menu_date` + `created_at`)
+- `DELETE /api/plates/:id` → delete a saved plate
+- `GET /api/plates-between?from=&to=` → saved plates in a date window (for goal baselines)
+- `GET /api/profile` → the user's profile `{ name, allergens[], avoid_foods[], goals[] }`
+- `PUT /api/profile` → save the profile
 
 ## Database schema
 
@@ -102,6 +146,8 @@ raw `menu_items` table in tabular form, straight from the database:
   `(dining_hall, menu_date, meal, station, dish_name)`.
 - `plates` — one row per saved plate: `name`, `dining_hall`, `menu_date`,
   `image` (data URL), `items_json`, `totals_json`, `created_at`.
+- `profile` — single row (`id = 1`): `name`, `allergens`, `avoid_foods`,
+  `goals` (all JSON), `updated_at`.
 
 See `db.js` for the full column list.
 

@@ -49,6 +49,17 @@ db.exec(`
 `);
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS profile (
+    id            INTEGER PRIMARY KEY CHECK (id = 1),
+    name          TEXT,
+    allergens     TEXT,   -- JSON array of allergen categories
+    avoid_foods   TEXT,   -- JSON array of free-text foods to avoid
+    goals         TEXT,   -- JSON array of { id, metric, target, recurrence }
+    updated_at    TEXT
+  );
+`);
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS plates (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name         TEXT NOT NULL,
@@ -222,6 +233,57 @@ function getPlate(id) {
   return parsePlate(db.prepare(`SELECT * FROM plates WHERE id = ?`).get(id));
 }
 
+// Update an existing plate IN PLACE. The original menu_date and created_at are
+// preserved on purpose: editing a past meal must not move it to today. Only the
+// fields provided are changed.
+const updatePlateStmt = db.prepare(`
+  UPDATE plates SET
+    name = @name,
+    dining_hall = @dining_hall,
+    image = @image,
+    items_json = @items_json,
+    totals_json = @totals_json
+  WHERE id = @id
+`);
+
+function updatePlate(id, { name, dining_hall, image, items, totals }) {
+  const existing = getPlate(id);
+  if (!existing) return null;
+  updatePlateStmt.run({
+    id,
+    name: name || existing.name || "Unnamed Plate",
+    dining_hall: dining_hall ?? existing.dining_hall,
+    image: image === undefined ? existing.image : image, // null clears it
+    items_json: JSON.stringify(items || []),
+    totals_json: JSON.stringify(totals || null),
+  });
+  return getPlate(id);
+}
+
+function deletePlate(id) {
+  const info = db.prepare(`DELETE FROM plates WHERE id = ?`).run(id);
+  return info.changes > 0;
+}
+
+// Save a plate with an explicit created_at / menu_date. Used only by the demo
+// seeding script so example meals can be dated in the past.
+function savePlateAt(plate, createdAtISO) {
+  const info = insertPlateStmt.run({
+    name: plate.name || "Unnamed Plate",
+    dining_hall: plate.dining_hall || null,
+    menu_date: plate.menu_date || null,
+    image: plate.image || null,
+    items_json: JSON.stringify(plate.items || []),
+    totals_json: JSON.stringify(plate.totals || null),
+    created_at: createdAtISO || new Date().toISOString(),
+  });
+  return getPlate(info.lastInsertRowid);
+}
+
+function clearPlates() {
+  return db.prepare(`DELETE FROM plates`).run().changes;
+}
+
 // List plates. By default omits the (large) image for a lightweight listing;
 // pass withImages=true to include them.
 function listPlates(withImages = false) {
@@ -237,6 +299,75 @@ function listPlates(withImages = false) {
     });
 }
 
+// --- User profile (single user; id is always 1) ---
+
+const DEFAULT_PROFILE = { name: "", allergens: [], avoid_foods: [], goals: [] };
+
+function getProfile() {
+  const row = db.prepare(`SELECT * FROM profile WHERE id = 1`).get();
+  if (!row) return { ...DEFAULT_PROFILE };
+  const parse = (s, fallback) => {
+    try { const v = JSON.parse(s); return Array.isArray(v) ? v : fallback; }
+    catch { return fallback; }
+  };
+  return {
+    name: row.name || "",
+    allergens: parse(row.allergens, []),
+    avoid_foods: parse(row.avoid_foods, []),
+    goals: parse(row.goals, []),
+  };
+}
+
+const upsertProfileStmt = db.prepare(`
+  INSERT INTO profile (id, name, allergens, avoid_foods, goals, updated_at)
+  VALUES (1, @name, @allergens, @avoid_foods, @goals, @updated_at)
+  ON CONFLICT(id) DO UPDATE SET
+    name = @name, allergens = @allergens, avoid_foods = @avoid_foods,
+    goals = @goals, updated_at = @updated_at
+`);
+
+function saveProfile(p = {}) {
+  const clean = {
+    name: typeof p.name === "string" ? p.name.slice(0, 120) : "",
+    allergens: Array.isArray(p.allergens) ? p.allergens.filter((x) => typeof x === "string") : [],
+    avoid_foods: Array.isArray(p.avoid_foods)
+      ? p.avoid_foods.filter((x) => typeof x === "string" && x.trim()).map((x) => x.trim().slice(0, 80))
+      : [],
+    goals: Array.isArray(p.goals)
+      ? p.goals
+          .filter((g) => g && typeof g.metric === "string")
+          .map((g) => ({
+            id: String(g.id || Date.now() + "-" + Math.random().toString(36).slice(2, 7)),
+            metric: g.metric,
+            type: ["min", "max"].includes(g.type) ? g.type : "min",
+            target: Number(g.target) || 0,
+            recurrence: ["day", "week", "meal"].includes(g.recurrence) ? g.recurrence : "day",
+          }))
+      : [],
+  };
+  upsertProfileStmt.run({
+    name: clean.name,
+    allergens: JSON.stringify(clean.allergens),
+    avoid_foods: JSON.stringify(clean.avoid_foods),
+    goals: JSON.stringify(clean.goals),
+    updated_at: new Date().toISOString(),
+  });
+  return getProfile();
+}
+
+// Plates within a date window, used to compute per-day / per-week goal progress.
+// from/to are YYYY-MM-DD (inclusive). Matches on menu_date.
+function getPlatesBetween(from, to) {
+  return db
+    .prepare(
+      `SELECT id, name, dining_hall, menu_date, items_json, totals_json, created_at
+       FROM plates WHERE menu_date >= ? AND menu_date <= ?
+       ORDER BY menu_date DESC`
+    )
+    .all(from, to)
+    .map((row) => parsePlate({ image: null, ...row }));
+}
+
 module.exports = {
   db,
   replaceForHallDate,
@@ -247,4 +378,11 @@ module.exports = {
   savePlate,
   getPlate,
   listPlates,
+  updatePlate,
+  deletePlate,
+  savePlateAt,
+  clearPlates,
+  getProfile,
+  saveProfile,
+  getPlatesBetween,
 };

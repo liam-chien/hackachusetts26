@@ -8,6 +8,9 @@ button:disabled { opacity: .48; cursor: not-allowed; }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: #302721; text-decoration: none; font-weight: 800; font-size: 25px; letter-spacing: -1px; }
 .brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: #881c1c; color: white; }
 .brand-mark svg { width: 25px; height: 25px; }
+.brand-mark img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.brand-logo { gap: 0; }
+.brand-logo img { height: 38px; width: auto; display: block; }
 .brand-dot { color: #881c1c; margin-left: -9px; }
 .topbar-links { display: flex; gap: 20px; align-items: center; }
 .topbar-links a { color: #675d56; font-size: 13px; text-decoration: none; font-weight: 600; }

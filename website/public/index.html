@@ -3,24 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Ueat — Your plate, a little clearer</title>
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <title>Ueat — Health and Nutrition at #1 Dining</title>
+  <link rel="icon" href="favicon.png" type="image/png" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="hall-theme.css" />
   <link rel="stylesheet" href="tracker.css" />
 </head>
 <body class="tracker-page">
   <header class="topbar">
-    <a class="brand" href="index.html" aria-label="Ueat home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M6 15h20c0 7-4 11-10 11S6 22 6 15Z" stroke="currentColor" stroke-width="2"/><path d="m12 5-1 5m6-6-1 6m6-5-1 5M11 27h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>Ueat<span class="brand-dot">.</span></a>
-    <nav class="topbar-links" aria-label="Main navigation"><span class="campus-label">UMass Amherst</span><a href="menu.html">Browse menus &nearr;</a></nav>
+    <a class="brand brand-logo" href="index.html" aria-label="Ueat home"><img src="logo.png" alt="Ueat" /></a>
+    <nav class="topbar-links" aria-label="Main navigation"><span class="campus-label">UMass Amherst</span><a href="account.html">Account</a><a href="menu.html">Browse menus &nearr;</a></nav>
   </header>
   <section class="hall-hero" id="hallHero" aria-labelledby="hallTitle">
     <div class="hall-photo" id="hallPhoto" aria-hidden="true"></div><div class="hall-shade" aria-hidden="true"></div>
-    <div class="hero-content"><p class="eyebrow">Good food. A little more insight.</p><h1 id="hallTitle">Your campus. Your plate.</h1><p class="hero-detail"><span id="hallArea">UMass Amherst dining</span><span>Choose your dining commons below</span></p></div>
+    <div class="hero-content"><p class="eyebrow">Welcome</p><h1 id="hallTitle">Your campus. Your plate.</h1><p class="hero-detail"><span id="hallArea">UMass Amherst dining</span><span>Choose your dining commons below</span></p></div>
     <nav class="hall-tabs" id="hallTabs" aria-label="Dining halls"></nav>
   </section>
   <main class="tracker">
-    <div class="tracker-heading"><div><p class="eyebrow">Your meal, made clear</p><h2>What's on your plate?</h2></div><p id="trackerDate" class="tracker-date" role="status" aria-live="polite">Loading menu…</p></div>
+    <div class="tracker-heading"><div><p class="eyebrow">It's time to eat</p><h2>What's on your plate?</h2></div><p id="trackerDate" class="tracker-date" role="status" aria-live="polite">Loading menu…</p></div>
     <div id="menuNotice" class="menu-notice hidden" role="status"></div>
     <div class="tracker-layout">
       <div class="plate-column">
@@ -36,13 +36,17 @@
         <section class="panel plate-section" aria-labelledby="plateHeading">
           <div class="plate-header"><div><p class="eyebrow">Build your meal</p><h2 id="plateHeading">Your plate</h2></div><button id="addFoodBtn" class="add-btn" disabled>+ Add food</button></div>
           <label class="input-label" for="plateName">Meal name</label><input type="text" id="plateName" class="plate-name-input" placeholder="e.g. Lunch at Berkshire" aria-label="Meal name" maxlength="120" />
-          <p id="emptyHelp" class="empty-help">A good meal starts here.<br><span>Add a food from this dining hall's menu.</span></p><div id="plateItems" class="plate-items"></div>
+          <p id="emptyHelp" class="empty-help">A good meal starts here.<br><span>Add a food from this dining hall's menu.</span></p>
+          <div id="plateWarnings" class="plate-warnings hidden" role="alert"></div>
+          <div id="plateItems" class="plate-items"></div>
         </section>
       </div>
       <aside class="nutrition-column">
         <section class="panel overview-section" aria-labelledby="overviewHeading">
           <div class="overview-header"><div><p class="eyebrow">The bigger picture</p><h2 id="overviewHeading">Nutrition overview</h2></div><button id="metricsBtn" class="link-btn">Customize</button></div>
-          <p class="overview-description">A little insight into every bite.</p><div id="overview" class="overview-grid" aria-live="polite"></div><p id="nutritionNote" class="nutrition-note">Add foods to see your meal's nutrition.</p>
+          <p class="overview-description">Edit personal meal goals in your account</p>
+          <div id="goalProgress" class="goal-progress" aria-live="polite"></div>
+          <div id="overview" class="overview-grid" aria-live="polite"></div><p id="nutritionNote" class="nutrition-note">Add foods to see your meal's nutrition.</p>
           <div class="actions"><button id="saveBtn" class="primary-btn" disabled>Save meal</button><button id="loadBtn" class="secondary-btn">Meal history</button></div><p id="actionStatus" class="action-status" role="status" aria-live="polite"></p>
         </section>
         <p class="source-note">Nutrition from <a href="https://www.umassdining.com/locations-menus" target="_blank" rel="noreferrer">UMass Dining</a>. Totals are estimates based on the portions you enter.</p><p class="source-note photo-credit">Dining commons photography: UMass Dining.</p>
@@ -50,7 +54,6 @@
     </div>
   </main>
   <div id="metricsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="metricsTitle"><div class="modal-card"><button class="modal-close" id="metricsClose" aria-label="Close">&times;</button><p class="eyebrow">Make it yours</p><h2 id="metricsTitle">Choose your metrics</h2><div id="metricsList" class="metrics-list"></div></div></div>
-  <div id="loadModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="loadTitle"><div class="modal-card"><button class="modal-close" id="loadClose" aria-label="Close">&times;</button><p class="eyebrow">Previously on your plate</p><h2 id="loadTitle">Meal history</h2><div id="loadList" class="load-list"></div></div></div>
-  <script src="hall-theme.js"></script><script src="tracker.js"></script>
+  <script src="hall-theme.js"></script><script src="nutrition.js"></script><script src="tracker.js"></script>
 </body>
 </html>

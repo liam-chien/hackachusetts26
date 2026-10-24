@@ -1,0 +1,577 @@
+{
+  "menu": {
+    "date": "2026-10-24",
+    "dining_hall": "Worcester",
+    "meal": "lunch",
+    "item_count": 16
+  },
+  "config": {
+    "auto_match_min_score": 88.0,
+    "auto_match_min_margin": 12.0,
+    "needs_confirmation_min_score": 55.0,
+    "candidate_floor_score": 45.0,
+    "min_specificity_tokens": 2,
+    "coverage_weight": 0.65,
+    "max_candidates": 10,
+    "candidate_score_window": 10.0
+  },
+  "input_warnings": {
+    "qwen_skipped_entries": 0,
+    "menu_skipped_entries": 0
+  },
+  "component_count": 17,
+  "summary": {
+    "auto_match": 8,
+    "needs_confirmation": 7,
+    "unmatched": 2
+  },
+  "results": [
+    {
+      "predicted_name": "grilled chicken breast",
+      "estimated_weight_g": 145.0,
+      "weight_valid": true,
+      "status": "auto_match",
+      "candidates": [
+        {
+          "id": "wor_001",
+          "name": "Grilled Chicken Breast",
+          "score": 100.0,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 165,
+            "protein_g": 31,
+            "carbs_g": 0,
+            "fat_g": 3.6
+          }
+        }
+      ],
+      "explanation": "Top candidate 'Grilled Chicken Breast' scored 100.0 and beat the closest other menu item by 56.2."
+    },
+    {
+      "predicted_name": "Chicken Breast, Grilled",
+      "estimated_weight_g": 150.0,
+      "weight_valid": true,
+      "status": "auto_match",
+      "candidates": [
+        {
+          "id": "wor_001",
+          "name": "Grilled Chicken Breast",
+          "score": 100.0,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 165,
+            "protein_g": 31,
+            "carbs_g": 0,
+            "fat_g": 3.6
+          }
+        }
+      ],
+      "explanation": "Top candidate 'Grilled Chicken Breast' scored 100.0 and beat the closest other menu item by 56.2."
+    },
+    {
+      "predicted_name": "chicken",
+      "estimated_weight_g": 100.0,
+      "weight_valid": true,
+      "status": "needs_confirmation",
+      "candidates": [
+        {
+          "id": "wor_001",
+          "name": "Grilled Chicken Breast",
+          "score": 76.67,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 165,
+            "protein_g": 31,
+            "carbs_g": 0,
+            "fat_g": 3.6
+          }
+        },
+        {
+          "id": "wor_002",
+          "name": "Buffalo Chicken Wrap",
+          "score": 76.67,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 230,
+            "protein_g": 14,
+            "carbs_g": 22,
+            "fat_g": 9.5
+          }
+        },
+        {
+          "id": "wor_009",
+          "name": "Chicken Noodle Soup Bowl",
+          "score": 73.75,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 40,
+            "protein_g": 2.5,
+            "carbs_g": 4.5,
+            "fat_g": 1.2
+          }
+        },
+        {
+          "id": "wor_008",
+          "name": "Chicken Noodle Soup Cup",
+          "score": 73.75,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 40,
+            "protein_g": 2.5,
+            "carbs_g": 4.5,
+            "fat_g": 1.2
+          }
+        }
+      ],
+      "explanation": "Prediction 'chicken' is too generic (1 meaningful token(s)); candidate 'Grilled Chicken Breast' requires confirmation."
+    },
+    {
+      "predicted_name": "rice",
+      "estimated_weight_g": 150.0,
+      "weight_valid": true,
+      "status": "needs_confirmation",
+      "candidates": [
+        {
+          "id": "wor_004",
+          "name": "Brown Rice",
+          "score": 82.5,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 123,
+            "protein_g": 2.7,
+            "carbs_g": 25.6,
+            "fat_g": 1.0
+          }
+        },
+        {
+          "id": "wor_003",
+          "name": "White Rice",
+          "score": 82.5,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 130,
+            "protein_g": 2.7,
+            "carbs_g": 28,
+            "fat_g": 0.3
+          }
+        }
+      ],
+      "explanation": "Prediction 'rice' is too generic (1 meaningful token(s)); candidate 'Brown Rice' requires confirmation."
+    },
+    {
+      "predicted_name": "pizza",
+      "estimated_weight_g": 125.0,
+      "weight_valid": true,
+      "status": "needs_confirmation",
+      "candidates": [
+        {
+          "id": "wor_010",
+          "name": "Cheese Pizza",
+          "score": 82.5,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 266,
+            "protein_g": 11,
+            "carbs_g": 33,
+            "fat_g": 10
+          }
+        },
+        {
+          "id": "wor_011",
+          "name": "Pepperoni Pizza",
+          "score": 82.5,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 298,
+            "protein_g": 12,
+            "carbs_g": 32,
+            "fat_g": 13
+          }
+        }
+      ],
+      "explanation": "Prediction 'pizza' is too generic (1 meaningful token(s)); candidate 'Cheese Pizza' requires confirmation."
+    },
+    {
+      "predicted_name": "fries",
+      "estimated_weight_g": 90.0,
+      "weight_valid": true,
+      "status": "needs_confirmation",
+      "candidates": [
+        {
+          "id": "wor_014",
+          "name": "French Fries",
+          "score": 82.5,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 312,
+            "protein_g": 3.4,
+            "carbs_g": 41,
+            "fat_g": 15
+          }
+        }
+      ],
+      "explanation": "Prediction 'fries' is too generic (1 meaningful token(s)); candidate 'French Fries' requires confirmation."
+    },
+    {
+      "predicted_name": "chicken noodle soup",
+      "estimated_weight_g": 250.0,
+      "weight_valid": true,
+      "status": "needs_confirmation",
+      "candidates": [
+        {
+          "id": "wor_009",
+          "name": "Chicken Noodle Soup Bowl",
+          "score": 91.25,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 40,
+            "protein_g": 2.5,
+            "carbs_g": 4.5,
+            "fat_g": 1.2
+          }
+        },
+        {
+          "id": "wor_008",
+          "name": "Chicken Noodle Soup Cup",
+          "score": 91.25,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 40,
+            "protein_g": 2.5,
+            "carbs_g": 4.5,
+            "fat_g": 1.2
+          }
+        }
+      ],
+      "explanation": "'Chicken Noodle Soup Bowl' contains every word of 'chicken noodle soup' (score 91.2) but adds 'bowl'; the prediction may be less specific than the dish, so it needs confirmation."
+    },
+    {
+      "predicted_name": "bean chili",
+      "estimated_weight_g": 220.0,
+      "weight_valid": true,
+      "status": "needs_confirmation",
+      "candidates": [
+        {
+          "id": "wor_007",
+          "name": "Vegetarian Bean Chili",
+          "score": 88.33,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 110,
+            "protein_g": 6,
+            "carbs_g": 17,
+            "fat_g": 2
+          }
+        }
+      ],
+      "explanation": "'Vegetarian Bean Chili' contains every word of 'bean chili' (score 88.3) but adds 'vegetarian'; the prediction may be less specific than the dish, so it needs confirmation."
+    },
+    {
+      "predicted_name": "beef chili",
+      "estimated_weight_g": 200.0,
+      "weight_valid": true,
+      "status": "auto_match",
+      "candidates": [
+        {
+          "id": "wor_006",
+          "name": "Beef Chili",
+          "score": 100.0,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 140,
+            "protein_g": 10,
+            "carbs_g": 9,
+            "fat_g": 7
+          }
+        }
+      ],
+      "explanation": "Top candidate 'Beef Chili' scored 100.0 and beat the closest other menu item by 60.4."
+    },
+    {
+      "predicted_name": "creme brulee",
+      "estimated_weight_g": 95.0,
+      "weight_valid": true,
+      "status": "auto_match",
+      "candidates": [
+        {
+          "id": "wor_013",
+          "name": "Crème Brûlée",
+          "score": 100.0,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 290,
+            "protein_g": 4.5,
+            "carbs_g": 26,
+            "fat_g": 19
+          }
+        }
+      ],
+      "explanation": "Top candidate 'Crème Brûlée' scored 100.0 and beat the closest other menu item by 67.5."
+    },
+    {
+      "predicted_name": "mac and cheese",
+      "estimated_weight_g": 200.0,
+      "weight_valid": true,
+      "status": "auto_match",
+      "candidates": [
+        {
+          "id": "16",
+          "name": "Mac & Cheese",
+          "score": 100.0,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 164,
+            "protein_g": 6.4,
+            "carbs_g": 19,
+            "fat_g": 6.6
+          }
+        }
+      ],
+      "explanation": "Top candidate 'Mac & Cheese' scored 100.0 and beat the closest other menu item by 40.0."
+    },
+    {
+      "predicted_name": "stir fry",
+      "estimated_weight_g": 180.0,
+      "weight_valid": true,
+      "status": "needs_confirmation",
+      "candidates": [
+        {
+          "id": "wor_015",
+          "name": "Chef's Special Stir-Fry",
+          "score": 79.0,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": null
+        }
+      ],
+      "explanation": "'Chef's Special Stir-Fry' contains every word of 'stir fry' (score 79.0) but adds 'chef', 's', 'special'; the prediction may be less specific than the dish, so it needs confirmation."
+    },
+    {
+      "predicted_name": "sushi roll",
+      "estimated_weight_g": 140.0,
+      "weight_valid": true,
+      "status": "unmatched",
+      "candidates": [
+        {
+          "id": "wor_004",
+          "name": "Brown Rice",
+          "score": 26.0,
+          "contains_predicted_words": false,
+          "plausible": false,
+          "nutrition_per_100g": {
+            "calories": 123,
+            "protein_g": 2.7,
+            "carbs_g": 25.6,
+            "fat_g": 1.0
+          }
+        },
+        {
+          "id": "wor_003",
+          "name": "White Rice",
+          "score": 26.0,
+          "contains_predicted_words": false,
+          "plausible": false,
+          "nutrition_per_100g": {
+            "calories": 130,
+            "protein_g": 2.7,
+            "carbs_g": 28,
+            "fat_g": 0.3
+          }
+        },
+        {
+          "id": "wor_005",
+          "name": "Steamed Broccoli",
+          "score": 25.0,
+          "contains_predicted_words": false,
+          "plausible": false,
+          "nutrition_per_100g": {
+            "calories": 35,
+            "protein_g": 2.4,
+            "carbs_g": 7.2,
+            "fat_g": 0.4
+          }
+        },
+        {
+          "id": "wor_009",
+          "name": "Chicken Noodle Soup Bowl",
+          "score": 22.94,
+          "contains_predicted_words": false,
+          "plausible": false,
+          "nutrition_per_100g": {
+            "calories": 40,
+            "protein_g": 2.5,
+            "carbs_g": 4.5,
+            "fat_g": 1.2
+          }
+        },
+        {
+          "id": "wor_011",
+          "name": "Pepperoni Pizza",
+          "score": 20.8,
+          "contains_predicted_words": false,
+          "plausible": false,
+          "nutrition_per_100g": {
+            "calories": 298,
+            "protein_g": 12,
+            "carbs_g": 32,
+            "fat_g": 13
+          }
+        },
+        {
+          "id": "wor_015",
+          "name": "Chef's Special Stir-Fry",
+          "score": 19.7,
+          "contains_predicted_words": false,
+          "plausible": false,
+          "nutrition_per_100g": null
+        },
+        {
+          "id": "wor_008",
+          "name": "Chicken Noodle Soup Cup",
+          "score": 19.7,
+          "contains_predicted_words": false,
+          "plausible": false,
+          "nutrition_per_100g": {
+            "calories": 40,
+            "protein_g": 2.5,
+            "carbs_g": 4.5,
+            "fat_g": 1.2
+          }
+        },
+        {
+          "id": "wor_006",
+          "name": "Beef Chili",
+          "score": 19.5,
+          "contains_predicted_words": false,
+          "plausible": false,
+          "nutrition_per_100g": {
+            "calories": 140,
+            "protein_g": 10,
+            "carbs_g": 9,
+            "fat_g": 7
+          }
+        },
+        {
+          "id": "wor_013",
+          "name": "Crème Brûlée",
+          "score": 17.73,
+          "contains_predicted_words": false,
+          "plausible": false,
+          "nutrition_per_100g": {
+            "calories": 290,
+            "protein_g": 4.5,
+            "carbs_g": 26,
+            "fat_g": 19
+          }
+        },
+        {
+          "id": "wor_012",
+          "name": "Caesar Salad",
+          "score": 17.73,
+          "contains_predicted_words": false,
+          "plausible": false,
+          "nutrition_per_100g": {
+            "calories": 190,
+            "protein_g": 4,
+            "carbs_g": 8,
+            "fat_g": 16,
+            "sodium_mg": 420
+          }
+        }
+      ],
+      "explanation": "No menu item contains every word of 'sushi roll', and the closest name 'Brown Rice' scored 26.0, below the confirmation threshold (55.0). Candidates listed are only the closest names on the menu."
+    },
+    {
+      "predicted_name": "caesar salad",
+      "estimated_weight_g": 85.0,
+      "weight_valid": true,
+      "status": "auto_match",
+      "candidates": [
+        {
+          "id": "wor_012",
+          "name": "Caesar Salad",
+          "score": 100.0,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 190,
+            "protein_g": 4,
+            "carbs_g": 8,
+            "fat_g": 16,
+            "sodium_mg": 420
+          }
+        }
+      ],
+      "explanation": "Top candidate 'Caesar Salad' scored 100.0 and beat the closest other menu item by 70.5."
+    },
+    {
+      "predicted_name": "steamed broccoli",
+      "estimated_weight_g": null,
+      "weight_valid": false,
+      "status": "auto_match",
+      "candidates": [
+        {
+          "id": "wor_005",
+          "name": "Steamed Broccoli",
+          "score": 100.0,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 35,
+            "protein_g": 2.4,
+            "carbs_g": 7.2,
+            "fat_g": 0.4
+          }
+        }
+      ],
+      "explanation": "Top candidate 'Steamed Broccoli' scored 100.0 and beat the closest other menu item by 67.5. Note: estimated weight is missing or invalid and was not substituted."
+    },
+    {
+      "predicted_name": "white rice",
+      "estimated_weight_g": null,
+      "weight_valid": false,
+      "status": "auto_match",
+      "candidates": [
+        {
+          "id": "wor_003",
+          "name": "White Rice",
+          "score": 100.0,
+          "contains_predicted_words": true,
+          "plausible": true,
+          "nutrition_per_100g": {
+            "calories": 130,
+            "protein_g": 2.7,
+            "carbs_g": 28,
+            "fat_g": 0.3
+          }
+        }
+      ],
+      "explanation": "Top candidate 'White Rice' scored 100.0 and beat the closest other menu item by 67.0. Note: estimated weight is missing or invalid and was not substituted."
+    },
+    {
+      "predicted_name": null,
+      "estimated_weight_g": 60.0,
+      "weight_valid": true,
+      "status": "unmatched",
+      "candidates": [],
+      "explanation": "Predicted component has no usable name; cannot match."
+    }
+  ]
+}

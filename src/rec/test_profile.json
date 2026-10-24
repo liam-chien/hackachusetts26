@@ -1,0 +1,18 @@
+{
+  "allergies": ["peanuts"],
+  "excluded_ingredients": ["mushrooms"],
+  "dietary_restrictions": {
+    "required": [],
+    "excluded": ["contains pork"]
+  },
+  "daily_goals": {
+    "protein": { "unit": "g", "type": "minimum", "target": 120 },
+    "fiber": { "unit": "g", "type": "minimum", "target": 30 },
+    "calories": { "unit": "kcal", "type": "range", "min": 2000, "max": 2500 },
+    "sodium": { "unit": "mg", "type": "maximum", "target": 2300, "enforcement": "hard" },
+    "sugars": { "unit": "g", "type": "maximum", "target": 50 },
+    "saturated_fat": { "unit": "g", "type": "maximum", "target": 20, "enforcement": "hard" },
+    "cholesterol": { "unit": "mg", "type": "maximum", "target": 300 },
+    "trans_fat": { "unit": "g", "type": "maximum", "target": 2 }
+  }
+}

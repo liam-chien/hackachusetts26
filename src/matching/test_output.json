@@ -1,0 +1,21 @@
+{
+  "foods": [
+    {"name": "grilled chicken breast", "weight_g": 145},
+    {"name": "Chicken Breast, Grilled", "weight_g": 150},
+    {"name": "chicken", "weight_g": 100},
+    {"name": "rice", "weight_g": 150},
+    {"name": "pizza", "weight_g": 125},
+    {"name": "fries", "weight_g": 90},
+    {"name": "chicken noodle soup", "weight_g": 250},
+    {"name": "bean chili", "weight_g": 220},
+    {"name": "beef chili", "weight_g": 200},
+    {"name": "creme brulee", "weight_g": 95},
+    {"name": "mac and cheese", "weight_g": 200},
+    {"name": "stir fry", "weight_g": 180},
+    {"name": "sushi roll", "weight_g": 140},
+    {"name": "caesar salad", "weight_g": "85"},
+    {"name": "steamed broccoli", "weight_g": -40},
+    {"name": "white rice"},
+    {"weight_g": 60}
+  ]
+}
