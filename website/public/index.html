@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>UMass Dining — Meal Tracker</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="tracker.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <h1>Meal Tracker</h1>
+      <p class="subtitle">
+        Track your plate &middot;
+        <a href="/menu.html" class="header-link">Browse menus</a>
+      </p>
+    </header>
+
+    <!-- Dining hall selector -->
+    <nav class="hall-tabs" id="hallTabs" aria-label="Dining halls"></nav>
+
+    <main class="tracker">
+      <p id="trackerDate" class="menu-date tracker-date"></p>
+
+      <!-- Plate photo -->
+      <section class="photo-section">
+        <label class="photo-box" id="photoBox">
+          <input
+            type="file"
+            id="photoInput"
+            accept="image/*"
+            capture="environment"
+            hidden
+          />
+          <div class="photo-placeholder" id="photoPlaceholder">
+            <span class="photo-icon">📷</span>
+            <span>Tap to add a photo of your plate</span>
+          </div>
+          <img id="photoPreview" class="photo-preview hidden" alt="Plate photo" />
+        </label>
+        <button id="removePhotoBtn" class="link-btn hidden">Remove photo</button>
+      </section>
+
+      <!-- Plate name -->
+      <section class="name-section">
+        <input
+          type="text"
+          id="plateName"
+          class="plate-name-input"
+          value="Unnamed Plate"
+          aria-label="Plate name"
+        />
+      </section>
+
+      <!-- Foods on the plate -->
+      <section class="plate-section">
+        <div class="plate-header">
+          <h2>Your Plate</h2>
+          <button id="addFoodBtn" class="add-btn" aria-label="Add food">+</button>
+        </div>
+        <p id="emptyHelp" class="empty-help">
+          <em>Select [+] to add food to your plate!</em>
+        </p>
+        <div id="plateItems" class="plate-items"></div>
+      </section>
+
+      <!-- Nutrition overview -->
+      <section class="overview-section">
+        <div class="overview-header">
+          <h2>Nutrition Overview</h2>
+          <button id="metricsBtn" class="link-btn">Choose metrics</button>
+        </div>
+        <div id="overview" class="overview-grid"></div>
+      </section>
+
+      <!-- Actions -->
+      <section class="actions">
+        <button id="saveBtn" class="primary-btn">Save</button>
+        <button id="loadBtn" class="secondary-btn">Load (dev)</button>
+      </section>
+    </main>
+
+    <!-- Metrics chooser popover -->
+    <div id="metricsModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <button class="modal-close" id="metricsClose" aria-label="Close">&times;</button>
+        <h2>Choose metrics</h2>
+        <div id="metricsList" class="metrics-list"></div>
+      </div>
+    </div>
+
+    <!-- Load saved plates (dev) -->
+    <div id="loadModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <button class="modal-close" id="loadClose" aria-label="Close">&times;</button>
+        <h2>Saved plates</h2>
+        <div id="loadList" class="load-list"></div>
+      </div>
+    </div>
+
+    <script src="tracker.js"></script>
+  </body>
+</html>

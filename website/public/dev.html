@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Developer — Raw Database | UMass Dining</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="dev.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <h1>Raw Database View</h1>
+      <p class="subtitle">
+        Developer tool &middot; table <code>menu_items</code> &middot;
+        <a href="/" class="header-link">&larr; Back to site</a>
+      </p>
+    </header>
+
+    <main class="dev-container">
+      <div class="dev-toolbar">
+        <label>
+          Hall
+          <select id="fHall"><option value="">All</option></select>
+        </label>
+        <label>
+          Date
+          <select id="fDate"><option value="">All</option></select>
+        </label>
+        <label>
+          Meal
+          <select id="fMeal"><option value="">All</option></select>
+        </label>
+        <label>
+          Rows
+          <select id="fLimit">
+            <option>50</option>
+            <option selected>200</option>
+            <option>500</option>
+            <option>1000</option>
+          </select>
+        </label>
+        <input id="fSearch" type="search" placeholder="Filter visible rows…" />
+        <button id="applyBtn" class="refresh-btn">Apply</button>
+      </div>
+
+      <div class="dev-status">
+        <span id="rowInfo"></span>
+        <span class="pager">
+          <button id="prevBtn" class="pg-btn">&larr; Prev</button>
+          <span id="pageInfo"></span>
+          <button id="nextBtn" class="pg-btn">Next &rarr;</button>
+        </span>
+      </div>
+
+      <div class="table-wrap">
+        <table id="rawTable" class="raw-table">
+          <thead><tr id="headRow"></tr></thead>
+          <tbody id="bodyRows"></tbody>
+        </table>
+      </div>
+    </main>
+
+    <script src="dev.js"></script>
+  </body>
+</html>

@@ -1,0 +1,105 @@
+.header-link { color: #fff; text-decoration: underline; }
+.site-header code {
+  background: rgba(255, 255, 255, 0.18);
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+}
+
+.dev-container {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 1rem 1.2rem 3rem;
+}
+
+.dev-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.8rem;
+  margin-bottom: 0.9rem;
+}
+.dev-toolbar label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  color: var(--muted);
+  gap: 0.2rem;
+}
+.dev-toolbar select,
+.dev-toolbar input {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: #fff;
+}
+.dev-toolbar #fSearch { min-width: 220px; }
+
+.dev-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.pager { display: flex; align-items: center; gap: 0.6rem; }
+.pg-btn {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.pg-btn:disabled { opacity: 0.45; cursor: default; }
+
+.table-wrap {
+  overflow: auto;
+  max-height: 72vh;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.raw-table {
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  width: max-content;
+  min-width: 100%;
+}
+.raw-table th,
+.raw-table td {
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.55rem;
+  text-align: left;
+  white-space: nowrap;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
+}
+.raw-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--maroon);
+  color: #fff;
+  z-index: 2;
+  font-weight: 600;
+}
+.raw-table tbody tr:nth-child(even) { background: #faf8f6; }
+.raw-table tbody tr:hover { background: #fdeede; }
+.raw-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.raw-table td.null { color: #bbb; font-style: italic; }
+
+.raw-table td.expandable { cursor: pointer; }
+.raw-table td.expanded {
+  white-space: normal;
+  max-width: 480px;
+  word-break: break-word;
+}

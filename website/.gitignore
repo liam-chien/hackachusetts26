@@ -1,0 +1,4 @@
+node_modules/
+dining.db
+dining.db-shm
+dining.db-wal

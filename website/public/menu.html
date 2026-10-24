@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UMass Dining Menus &amp; Nutrition</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <h1>UMass Dining</h1>
+      <p class="subtitle">
+        Today's menus &amp; nutrition facts &middot;
+        <a href="/" class="header-link">Meal tracker</a> &middot;
+        <a href="/dev.html" class="header-link">Developer view</a>
+      </p>
+    </header>
+
+    <nav class="hall-tabs" id="hallTabs" aria-label="Dining halls"></nav>
+
+    <main class="container">
+      <div class="status-bar">
+        <span id="menuDate" class="menu-date"></span>
+        <span id="statusMsg" class="status-msg"></span>
+        <button id="refreshBtn" class="refresh-btn">Refresh</button>
+      </div>
+
+      <div class="meal-tabs" id="mealTabs" role="tablist"></div>
+
+      <section id="menu" class="menu"></section>
+    </main>
+
+    <!-- Nutrition modal -->
+    <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
+        <h2 id="modalTitle"></h2>
+        <div id="modalBody"></div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
