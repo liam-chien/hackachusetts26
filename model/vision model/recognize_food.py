@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Recognize food and estimated quantities in one image, then write validated JSON."""
+"""Recognize food and estimated quantities in one JPEG, then write validated JSON."""
 from __future__ import annotations
 
 import argparse
 import base64
 import json
-import mimetypes
 import os
 import platform
 import signal
@@ -13,6 +12,7 @@ import socket
 import subprocess
 import sys
 import time
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
@@ -24,11 +24,21 @@ except ImportError as exc:
         "    python -m pip install -r requirements.txt"
     ) from exc
 
+try:
+    from PIL import Image, ImageOps, UnidentifiedImageError
+except ImportError as exc:
+    raise SystemExit(
+        "Missing dependency 'Pillow'. Run:\n"
+        "    python -m pip install -r requirements.txt"
+    ) from exc
+
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "artifacts.json"
 WEIGHTS_DIR = ROOT / "weights"
 RUNTIME_DIR = ROOT / "runtime"
 OUTPUTS_DIR = ROOT / "outputs"
+MAX_IMAGE_DIMENSION = 640
+JPEG_QUALITY = 88
 
 
 def load_config() -> dict[str, Any]:
@@ -187,12 +197,28 @@ class LocalLlamaServer:
         self.stop()
 
 
-def image_data_uri(path: Path) -> str:
-    mime_type, _ = mimetypes.guess_type(path.name)
-    if not mime_type or not mime_type.startswith("image/"):
-        raise ValueError(f"Cannot determine a supported image type from: {path.name}")
-    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-    return f"data:{mime_type};base64,{encoded}"
+def jpeg_data_uri(path: Path) -> str:
+    """Load, orient, downsize, and re-encode an input JPEG for the vision model."""
+    try:
+        with Image.open(path) as source:
+            source.load()
+            if source.format != "JPEG":
+                raise ValueError(f"Input must be a JPEG image: {path.name}")
+            image = ImageOps.exif_transpose(source)
+            image.thumbnail(
+                (MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION),
+                Image.Resampling.LANCZOS,
+                reducing_gap=2.0,
+            )
+            if image.mode != "RGB":
+                image = image.convert("RGB")
+            encoded_image = BytesIO()
+            image.save(encoded_image, format="JPEG", quality=JPEG_QUALITY, optimize=True)
+    except (UnidentifiedImageError, OSError) as exc:
+        raise ValueError(f"Could not read JPEG image {path}: {exc}") from exc
+
+    encoded = base64.b64encode(encoded_image.getvalue()).decode("ascii")
+    return f"data:image/jpeg;base64,{encoded}"
 
 
 def system_prompt(language: str) -> str:
@@ -216,7 +242,7 @@ def request_payload(image: Path, language: str, hint: str | None, max_tokens: in
             {
                 "role": "user",
                 "content": [
-                    {"type": "image_url", "image_url": {"url": image_data_uri(image)}},
+                    {"type": "image_url", "image_url": {"url": jpeg_data_uri(image)}},
                     {"type": "text", "text": user_prompt(hint)},
                 ],
             },
@@ -226,6 +252,24 @@ def request_payload(image: Path, language: str, hint: str | None, max_tokens: in
         "stream": False,
         "response_format": {"type": "json_object"},
     }
+
+
+def response_text(content: Any) -> str:
+    """Extract text from standard or typed-part chat-completion content."""
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list) and content:
+        parts: list[str] = []
+        for part in content:
+            if (
+                not isinstance(part, dict)
+                or part.get("type") not in {"text", "output_text"}
+                or not isinstance(part.get("text"), str)
+            ):
+                raise RuntimeError("llama-server returned unsupported non-text content")
+            parts.append(part["text"])
+        return "".join(parts).strip()
+    raise RuntimeError("llama-server response content was not text")
 
 
 def call_server(url: str, payload: dict[str, Any], timeout: float) -> str:
@@ -242,9 +286,7 @@ def call_server(url: str, payload: dict[str, Any], timeout: float) -> str:
         raise RuntimeError(f"Inference request failed: {exc}{detail}") from exc
     except (ValueError, KeyError, IndexError, TypeError) as exc:
         raise RuntimeError("llama-server returned an unexpected response") from exc
-    if not isinstance(content, str):
-        raise RuntimeError("llama-server response content was not text")
-    return content.strip()
+    return response_text(content)
 
 
 def validate_result(result: Any) -> dict[str, Any]:
@@ -271,11 +313,52 @@ def validate_result(result: Any) -> dict[str, Any]:
     return result
 
 
+def decode_json(text: str) -> Any:
+    """Decode JSON, including one common extra layer of JSON string encoding."""
+    value = json.loads(text)
+    if isinstance(value, str):
+        value = json.loads(value)
+    return value
+
+
 def parse_result(raw: str) -> dict[str, Any]:
-    try:
-        return validate_result(json.loads(raw))
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"model output was not valid JSON: {exc}") from exc
+    """Find and validate the JSON object contained in the model's text response."""
+    text = raw.strip()
+    candidates = [text]
+
+    lines = text.splitlines()
+    if len(lines) >= 3 and lines[0].strip().lower() in {"```", "```json"} and lines[-1].strip() == "```":
+        candidates.append("\n".join(lines[1:-1]).strip())
+
+    errors: list[str] = []
+    for candidate in candidates:
+        try:
+            return validate_result(decode_json(candidate))
+        except (json.JSONDecodeError, ValueError) as exc:
+            errors.append(str(exc))
+
+    # If the model adds a short explanation around the object, raw_decode finds the
+    # complete JSON value without brittle first-brace/last-brace slicing.
+    decoder = json.JSONDecoder()
+    for position, character in enumerate(text):
+        if character != "{":
+            continue
+        try:
+            value, _ = decoder.raw_decode(text[position:])
+            return validate_result(value)
+        except (json.JSONDecodeError, ValueError):
+            continue
+
+    preview = text[:240].replace("\n", "\\n")
+    reason = errors[0] if errors else "no JSON object found"
+    raise ValueError(f"model text did not contain valid meal JSON ({reason}); preview: {preview!r}")
+
+
+def write_raw(raw: str, output: Path) -> Path:
+    raw_path = output.with_suffix(".raw.txt")
+    raw_path.parent.mkdir(parents=True, exist_ok=True)
+    raw_path.write_text(raw + "\n", encoding="utf-8")
+    return raw_path
 
 
 def main() -> int:
@@ -284,7 +367,7 @@ def main() -> int:
         return 2
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("image", type=Path, help="Input meal image (for example JPEG, PNG, or WebP).")
+    parser.add_argument("image", type=Path, help="Input meal image (JPEG).")
     parser.add_argument("-o", "--output", type=Path, help="JSON output path (default: outputs/<image>.json).")
     parser.add_argument("--language", choices=("en", "de"), default="en")
     parser.add_argument("--hint", help="Optional information about the photographed meal.")
@@ -303,6 +386,7 @@ def main() -> int:
 
     output = args.output or (OUTPUTS_DIR / f"{image.stem}.json")
     output = output.expanduser().resolve()
+    raw: str | None = None
 
     try:
         config = load_config()
@@ -316,12 +400,15 @@ def main() -> int:
                 raw = call_server(local.url, payload, timeout)
 
         if args.save_raw:
-            raw_path = output.with_suffix(".raw.txt")
-            raw_path.parent.mkdir(parents=True, exist_ok=True)
-            raw_path.write_text(raw + "\n", encoding="utf-8")
+            raw_path = write_raw(raw, output)
             print(f"Raw response: {raw_path}", file=sys.stderr)
 
-        result = parse_result(raw)
+        try:
+            result = parse_result(raw)
+        except ValueError as exc:
+            raw_path = write_raw(raw, output)
+            raise ValueError(f"{exc}\nRaw model response saved to: {raw_path}") from exc
+
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     except (OSError, RuntimeError, ValueError, TimeoutError) as exc:

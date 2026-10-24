@@ -68,11 +68,13 @@ python setup.py --force         # download and install everything again
 
 ## Recognize a meal
 
+The input must be a JPEG. Before inference, the program applies the photo's EXIF rotation, reduces it to fit within 640×640 pixels without stretching or upscaling, and re-encodes it as a compact JPEG. This matches the image size used to train the model and prevents high-resolution photos from filling the model's context window.
+
 ```bash
 python recognize_food.py path/to/meal.jpg
 ```
 
-The default result is written to `outputs/<image-name>.json` and also printed to stdout. To select the output path:
+The model's response arrives as text containing JSON. The program extracts that JSON, validates its fields, and writes `outputs/<image-name>.json`; it also prints the parsed object to stdout. It accepts plain JSON text as well as common wrappers such as a `json` Markdown fence or one extra JSON-string encoding layer. To select the output path:
 
 ```bash
 python recognize_food.py meal.jpg --output outputs/lunch.json
@@ -86,7 +88,7 @@ python recognize_food.py meal.jpg --language de
 python recognize_food.py meal.jpg --save-raw
 ```
 
-`--save-raw` preserves the model's original text as `<output-name>.raw.txt` before it is parsed and validated. The normal output remains JSON.
+`--save-raw` preserves the model's original text as `<output-name>.raw.txt` before it is parsed and validated. The normal output remains JSON. If parsing fails, the raw text is saved automatically so the exact response can be inspected.
 
 Example output shape:
 
