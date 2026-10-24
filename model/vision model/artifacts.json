@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "llama_cpp": {
+    "release": "b11200",
+    "source": "https://github.com/ggml-org/llama.cpp/releases/tag/b11200",
+    "download_base": "https://github.com/ggml-org/llama.cpp/releases/download/b11200",
+    "platforms": {
+      "darwin-arm64": {
+        "archive": "llama-b11200-bin-macos-arm64.tar.gz",
+        "size_bytes": 11755479,
+        "sha256": "caa654dcae608fa2a3047da4fccbe3c8a1aab1dcc3832313286024cb13182124",
+        "executable": "llama-server"
+      },
+      "darwin-x64": {
+        "archive": "llama-b11200-bin-macos-x64.tar.gz",
+        "size_bytes": 11309125,
+        "sha256": "802f2fb41629a974b77e19f177b54317e1724a9dcdc89281b7849b9bd94b6310",
+        "executable": "llama-server"
+      },
+      "linux-arm64": {
+        "archive": "llama-b11200-bin-ubuntu-arm64.tar.gz",
+        "size_bytes": 13500290,
+        "sha256": "5e5457b79e9e35817a69a77e6b382402e4d63487bac26eff5294ad03ee89cbb4",
+        "executable": "llama-server"
+      },
+      "linux-x64": {
+        "archive": "llama-b11200-bin-ubuntu-x64.tar.gz",
+        "size_bytes": 17402021,
+        "sha256": "d6fbb47c57ce3495ca246b21010e1c46223f3f501b8465cd0b47139888b9f1fe",
+        "executable": "llama-server"
+      },
+      "windows-arm64": {
+        "archive": "llama-b11200-bin-win-cpu-arm64.zip",
+        "size_bytes": 12039946,
+        "sha256": "ef7f4d38ed04c14eb2db7016952a2cc072ef0fea936fe00524c1f4b91bbbf4ad",
+        "executable": "llama-server.exe"
+      },
+      "windows-x64": {
+        "archive": "llama-b11200-bin-win-cpu-x64.zip",
+        "size_bytes": 19154722,
+        "sha256": "b958c2f249b59335048a57993802b292faeffaee55555b71e59616d6c2c399ca",
+        "executable": "llama-server.exe"
+      }
+    }
+  },
+  "model": {
+    "repository": "mkenfenheuer/evora-qwen3-vl-2b-photos-v3-GGUF",
+    "revision": "b3ef4d19340b01d41dad2781a6bb78ef5bc6b17a",
+    "source": "https://huggingface.co/mkenfenheuer/evora-qwen3-vl-2b-photos-v3-GGUF",
+    "files": {
+      "model": {
+        "filename": "evora-qwen3-vl-2b-photos-v3.Q8_0.gguf",
+        "size_bytes": 1834427360,
+        "sha256": "deb6514fccd6e0a52af6be6cad605e10e27fd4c8bb14594966d7829fe89247f1"
+      },
+      "mmproj": {
+        "filename": "mmproj-evora-qwen3-vl-2b-photos-v3.f16.gguf",
+        "size_bytes": 819394784,
+        "sha256": "f4fcaaad0593143fb20cf8d1afe7529a21f5ba3d0f1c900828fc16b34c787a40"
+      }
+    }
+  },
+  "server": {
+    "context_size": 4096,
+    "startup_timeout_seconds": 300,
+    "request_timeout_seconds": 600
+  }
+}

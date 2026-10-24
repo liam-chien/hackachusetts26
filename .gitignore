@@ -1,0 +1,14 @@
+# OS/editor metadata
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Downloaded model/runtime artifacts and generated results
+model/vision model/weights/
+model/vision model/runtime/
+model/vision model/.downloads/
+model/vision model/outputs/
+*.gguf
