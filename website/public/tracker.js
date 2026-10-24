@@ -464,25 +464,43 @@ function aggregate() {
 
 function metricDisplay(m, agg) {
   const t = agg[m.key];
-  if (t.missing || !t.count) return "—";
+  // Show "—" only when no food on the plate has this value at all.
+  if (!t.count) return "—";
+  // Partial coverage: some foods have the value, others don't. Show what we
+  // know, prefixed with "~" so the number reads as an estimate, not a total.
+  const partial = t.missing > 0 ? "~" : "";
   if (m.kind === "carbon") {
-    if (!t.count) return "—";
     const avg = t.sum / t.count;
-    return CARBON_LETTER[Math.round(avg)] || round(avg, 1);
+    return partial + (CARBON_LETTER[Math.round(avg)] || round(avg, 1));
   }
   if (m.kind === "avg") {
-    return t.count ? round(t.sum / t.count, 0) : "—";
+    return partial + round(t.sum / t.count, 0);
   }
-  return `${round(t.sum, m.unit === "g" || m.unit === "mg" ? 1 : 0)}${m.unit}`;
+  return `${partial}${round(t.sum, m.unit === "g" || m.unit === "mg" ? 1 : 0)}${m.unit}`;
+}
+
+// True if any visible metric is only partially covered by the plate's foods.
+function hasPartialMetric(agg) {
+  return METRICS.some(
+    (m) => state.visible.includes(m.key) && agg[m.key].count > 0 && agg[m.key].missing > 0
+  );
 }
 
 function renderOverview() {
   const chosen = state.rows.filter((r) => r.item && r.servings > 0);
   el.saveBtn.disabled = !chosen.length || state.saving;
-  el.nutritionNote.textContent = state.legacyTotals
-    ? "Saved totals from an older meal. Per-food nutrition was not recorded; editing may make totals unavailable."
-    : chosen.length ? "Based on the portions you enter. — means nutrition data is unavailable." : "Add foods to see your meal's nutrition.";
   const agg = aggregate();
+  let note;
+  if (state.legacyTotals) {
+    note = "Saved totals from an older meal. Per-food nutrition was not recorded; editing may make totals unavailable.";
+  } else if (!chosen.length) {
+    note = "Add foods to see your meal's nutrition.";
+  } else if (hasPartialMetric(agg)) {
+    note = "Based on the portions you enter. ~ means some foods are missing that value, so the total is a partial estimate; — means no food has it.";
+  } else {
+    note = "Based on the portions you enter. — means nutrition data is unavailable.";
+  }
+  el.nutritionNote.textContent = note;
   const visible = METRICS.filter((m) => state.visible.includes(m.key));
   if (!visible.length) {
     el.overview.innerHTML =
