@@ -1,17 +1,13 @@
-// Per-hall theming for the hero. Each hall gets a distinct accent color and
-// its residential-area label. We intentionally do NOT hotlink external photos:
-// the previously used umassdining.com banner images were generic marketing
-// shots (one showed non-UMass apparel) and loading them cross-origin on every
-// hall switch was fragile. The hero uses an accent gradient instead.
-//
-// To use real, hall-specific photography later: drop files into a local
-// "images/halls/" folder and set `image` below to e.g. "images/halls/berkshire.webp".
-// The code will fade the photo in over the gradient when it loads.
+// Per-hall theming for the hero. Each hall gets a local photo (served from
+// public/images/), a distinct accent color that tints the hero and themes the
+// page, and its residential-area label. The photo fades in over the accent
+// gradient once it loads; if an image fails to load, the gradient remains as a
+// graceful fallback.
 const HALL_THEMES = {
-  Berkshire: { accent: "#9b541e", area: "Southwest Residential Area" },
-  Worcester: { accent: "#881c1c", area: "Northeast Residential Area" },
-  Franklin:  { accent: "#35634b", area: "Central Residential Area" },
-  Hampshire: { accent: "#26646b", area: "Southwest Residential Area" },
+  Berkshire: { image: "images/Berkshire.png", accent: "#9b541e", area: "Southwest Residential Area" },
+  Worcester: { image: "images/Worcester.png", accent: "#881c1c", area: "Northeast Residential Area" },
+  Franklin:  { image: "images/Franklin.png",  accent: "#35634b", area: "Central Residential Area" },
+  Hampshire: { image: "images/Hampshire.png", accent: "#26646b", area: "Southwest Residential Area" },
 };
 
 let hallImageRequest = 0;

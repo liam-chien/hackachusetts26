@@ -31,6 +31,20 @@
 .add-btn:hover { background: #f1e5d6; }
 .empty-help { color: #74685b; text-align: center; font-size: 13px; line-height: 1.9; margin: 24px 0 7px; }
 .empty-help span { color: #a09589; font-size: 11px; }
+/* Allergen / avoided-food warnings */
+.plate-warnings { margin-top: 14px; border: 1px solid #e7b4b4; background: #fcecec; border-radius: 12px; padding: 12px 14px; display: flex; gap: 11px; align-items: flex-start; }
+.plate-warnings.hidden { display: none; }
+.plate-warnings .warn-mark { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: #c62828; color: #fff; font-size: 19px; font-weight: 800; display: grid; place-items: center; line-height: 1; }
+.plate-warnings .warn-body { min-width: 0; }
+.plate-warnings .warn-title { font-size: 13px; font-weight: 700; color: #9a2020; }
+.plate-warnings .warn-list { margin: 4px 0 0; font-size: 12px; color: #86413f; line-height: 1.6; }
+
+.food-row.warn { border-color: #e07373; background: #fcecec; }
+.food-row.warn .food-label { color: #9a2020; }
+.food-row .row-flag { display: none; flex-shrink: 0; align-self: center; width: 26px; height: 26px; border-radius: 50%; background: #c62828; color: #fff; font-size: 16px; font-weight: 800; align-items: center; justify-content: center; line-height: 1; margin-right: 2px; }
+.food-row.warn .row-flag { display: flex; }
+.food-row .row-warn-text { grid-column: 1 / -1; font-size: 11px; color: #9a2020; margin-top: 2px; }
+
 .plate-items { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 .plate-items:empty { margin-top: 0; }
 .food-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; background: #fbf9f6; border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
@@ -48,6 +62,20 @@
 .food-option:hover { background: #f8f1e9; }
 .opt-meta { display: block; color: var(--muted); font-size: 10px; margin-top: 4px; }
 .food-none { padding: 15px; font-size: 12px; color: var(--muted); }
+/* Goal progress bars */
+.goal-progress { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+.goal-progress:empty { display: none; }
+.goal-item .goal-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.goal-item .goal-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.goal-item .goal-rec { font-size: 9px; letter-spacing: .5px; text-transform: uppercase; color: #a0937f; margin-left: 5px; }
+.goal-item .goal-val { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.goal-bar { height: 9px; border-radius: 999px; background: #efe8df; overflow: hidden; }
+.goal-fill { height: 100%; border-radius: 999px; transition: width .25s ease; background: #4a8c5f; }
+.goal-fill.near { background: #c99a3a; }
+.goal-fill.over { background: #c0432f; }
+.goal-item.met .goal-val { color: #3f7a52; font-weight: 600; }
+.goal-item.over .goal-val { color: #b23a2a; font-weight: 600; }
+
 .overview-header { margin-bottom: 10px; }
 .overview-description { color: var(--muted); font-size: 11px; margin: 0 0 20px; }
 .overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
@@ -57,6 +85,9 @@
 .metric-label { font-size: 10px; color: #8e7b68; margin-top: 5px; }
 .overview-empty { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
 .nutrition-note { font-size: 10px; color: #9a8d7f; line-height: 1.7; margin: 17px 0; }
+.nutrition-note.note-error { color: #b23a2a; font-size: 11px; font-weight: 600; }
+.nutrition-note .note-link { color: #b23a2a; text-decoration: underline; text-underline-offset: 2px; font-weight: 700; }
+.nutrition-note .note-link:hover { color: #8f2a1d; }
 .actions { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 17px; }
 .primary-btn, .secondary-btn { min-height: 43px; border-radius: 10px; border: 1px solid transparent; padding: 11px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .primary-btn { color: white; background: #881c1c; } .primary-btn:hover { background: #6a1414; }

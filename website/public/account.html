@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Ueat — Account</title>
+  <link rel="icon" href="favicon.png" type="image/png" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="hall-theme.css" />
+  <link rel="stylesheet" href="tracker.css" />
+  <link rel="stylesheet" href="account.css" />
+</head>
+<body class="tracker-page">
+  <header class="topbar">
+    <a class="brand brand-logo" href="index.html" aria-label="Ueat home"><img src="logo.png" alt="Ueat" /></a>
+    <nav class="topbar-links" aria-label="Main navigation"><a href="index.html">Track a meal</a><a href="history.html">Meal history</a></nav>
+  </header>
+
+  <main class="account">
+    <div class="tracker-heading">
+      <div><p class="eyebrow">Your preferences</p><h2>Account</h2></div>
+      <p id="saveState" class="tracker-date" role="status" aria-live="polite"></p>
+    </div>
+
+    <section class="panel">
+      <div class="section-heading"><h2>Profile</h2></div>
+      <label class="input-label" for="name">Your name</label>
+      <input type="text" id="name" class="plate-name-input" placeholder="Your name" maxlength="120" />
+    </section>
+
+    <section class="panel">
+      <div class="section-heading"><h2>Allergens to avoid</h2></div>
+      <p class="overview-description">We'll flag any plate food that contains these.</p>
+      <div id="allergenList" class="chip-check-list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading"><h2>Foods to avoid</h2></div>
+      <p class="overview-description">Add words or dish names; plate foods whose name contains them get flagged.</p>
+      <form id="avoidForm" class="inline-add">
+        <input type="text" id="avoidInput" class="plate-name-input" placeholder="e.g. mushroom, cilantro, pork" maxlength="80" />
+        <button type="submit" class="add-btn">+ Add</button>
+      </form>
+      <div id="avoidChips" class="chip-list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading"><h2>Nutrition goals</h2></div>
+      <p class="overview-description">Set targets for any macronutrient. Progress shows while you build a plate.</p>
+      <form id="goalForm" class="goal-add">
+        <label class="input-label">Nutrient
+          <select id="goalMetric"></select>
+        </label>
+        <label class="input-label">Type
+          <select id="goalType">
+            <option value="min">At least</option>
+            <option value="max">At most</option>
+          </select>
+        </label>
+        <label class="input-label">Target
+          <span class="target-group"><input type="number" id="goalTarget" min="0" step="1" placeholder="0" /><span id="goalUnit" class="target-unit"></span></span>
+        </label>
+        <label class="input-label">Recurrence
+          <select id="goalRecurrence">
+            <option value="day">per day</option>
+            <option value="week">per week</option>
+            <option value="meal">per meal</option>
+          </select>
+        </label>
+        <button type="submit" class="add-btn">+ Add goal</button>
+      </form>
+      <div id="goalChips" class="goal-chips"></div>
+    </section>
+
+    <div class="account-actions">
+      <button id="saveBtn" class="primary-btn">Save preferences</button>
+      <span id="dirtyNote" class="action-status"></span>
+    </div>
+  </main>
+
+  <script src="nutrition.js"></script>
+  <script src="account.js"></script>
+</body>
+</html>

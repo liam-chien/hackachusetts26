@@ -10,6 +10,11 @@ const {
   savePlate,
   getPlate,
   listPlates,
+  updatePlate,
+  deletePlate,
+  getProfile,
+  saveProfile,
+  getPlatesBetween,
 } = require("./db");
 
 const app = express();
@@ -100,6 +105,52 @@ app.get("/api/plates/:id", (req, res) => {
   const plate = getPlate(Number(req.params.id));
   if (!plate) return res.status(404).json({ error: "Plate not found" });
   res.json(plate);
+});
+
+// Update a saved plate in place. The original date is preserved (editing a past
+// meal must not move it to today).
+app.put("/api/plates/:id", (req, res) => {
+  try {
+    const plate = updatePlate(Number(req.params.id), req.body || {});
+    if (!plate) return res.status(404).json({ error: "Plate not found" });
+    res.json(plate);
+  } catch (err) {
+    console.error("[plates] update failed:", err.message);
+    res.status(400).json({ error: "Could not update plate" });
+  }
+});
+
+// Delete a saved plate.
+app.delete("/api/plates/:id", (req, res) => {
+  const ok = deletePlate(Number(req.params.id));
+  if (!ok) return res.status(404).json({ error: "Plate not found" });
+  res.json({ deleted: true });
+});
+
+// Saved plates within a date window (for per-day / per-week goal progress).
+// ?from=YYYY-MM-DD&to=YYYY-MM-DD (inclusive). Images omitted.
+app.get("/api/plates-between", (req, res) => {
+  const { from, to } = req.query;
+  const isDate = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  if (!isDate(from) || !isDate(to)) {
+    return res.status(400).json({ error: "from and to must be YYYY-MM-DD" });
+  }
+  res.json({ plates: getPlatesBetween(from, to) });
+});
+
+// --- User profile ---
+
+app.get("/api/profile", (_req, res) => {
+  res.json(getProfile());
+});
+
+app.put("/api/profile", (req, res) => {
+  try {
+    res.json(saveProfile(req.body || {}));
+  } catch (err) {
+    console.error("[profile] save failed:", err.message);
+    res.status(400).json({ error: "Could not save profile" });
+  }
 });
 
 app.listen(PORT, () => {

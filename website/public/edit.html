@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Ueat — Edit meal</title>
+  <link rel="icon" href="favicon.png" type="image/png" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="hall-theme.css" />
+  <link rel="stylesheet" href="tracker.css" />
+  <link rel="stylesheet" href="edit.css" />
+</head>
+<body class="tracker-page">
+  <header class="topbar">
+    <a class="brand brand-logo" href="index.html" aria-label="Ueat home"><img src="logo.png" alt="Ueat" /></a>
+    <nav class="topbar-links" aria-label="Main navigation"><a href="history.html">&larr; Meal history</a></nav>
+  </header>
+
+  <main class="tracker">
+    <div class="tracker-heading">
+      <div><p class="eyebrow">Editing a saved meal</p><h2 id="editTitle">Edit meal</h2></div>
+      <p id="editDate" class="tracker-date" role="status">Loading…</p>
+    </div>
+    <div id="editNotice" class="menu-notice hidden" role="status"></div>
+
+    <div class="tracker-layout" id="editLayout" hidden>
+      <div class="plate-column">
+        <section class="panel photo-section" aria-labelledby="photoHeading">
+          <div class="section-heading"><h2 id="photoHeading">Photo</h2><span class="optional-label">Optional</span></div>
+          <label class="photo-box" id="photoBox" tabindex="0" role="button" aria-label="Add or replace a photo of your plate">
+            <input type="file" id="photoInput" accept="image/*" capture="environment" hidden />
+            <div class="photo-placeholder" id="photoPlaceholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M11 8l2-3h6l2 3h5a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V11a3 3 0 0 1 3-3h5Z" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="18" r="6" stroke="currentColor" stroke-width="1.6"/></svg></span><strong>Add your plate photo</strong><span>Take a photo or choose one from your device</span></div>
+            <img id="photoPreview" class="photo-preview hidden" alt="Your plate" />
+          </label>
+          <div class="photo-footer"><p>The photo saved with this meal.</p><button id="removePhotoBtn" class="link-btn hidden">Remove photo</button></div>
+        </section>
+
+        <section class="panel plate-section" aria-labelledby="plateHeading">
+          <div class="plate-header"><div><p class="eyebrow">Build your meal</p><h2 id="plateHeading">Foods</h2></div><button id="addFoodBtn" class="add-btn" disabled>+ Add food</button></div>
+          <label class="input-label" for="plateName">Meal name</label><input type="text" id="plateName" class="plate-name-input" placeholder="Name your meal" aria-label="Meal name" maxlength="120" />
+          <p id="emptyHelp" class="empty-help hidden">This meal has no foods.<br><span>Add a food from this dining hall's menu.</span></p>
+          <div id="plateItems" class="plate-items"></div>
+          <p id="editHallNote" class="nutrition-note"></p>
+        </section>
+      </div>
+
+      <aside class="nutrition-column">
+        <section class="panel overview-section" aria-labelledby="overviewHeading">
+          <div class="overview-header"><div><p class="eyebrow">The bigger picture</p><h2 id="overviewHeading">Nutrition overview</h2></div><button id="metricsBtn" class="link-btn">Customize</button></div>
+          <div id="overview" class="overview-grid" aria-live="polite"></div>
+          <p id="nutritionNote" class="nutrition-note"></p>
+          <div class="actions">
+            <button id="saveBtn" class="primary-btn">Save changes</button>
+            <button id="cancelBtn" class="secondary-btn">Cancel</button>
+            <button id="deleteBtn" class="danger-btn">Delete meal</button>
+          </div>
+          <p id="actionStatus" class="action-status" role="status" aria-live="polite"></p>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <div id="metricsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="metricsTitle"><div class="modal-card"><button class="modal-close" id="metricsClose" aria-label="Close">&times;</button><p class="eyebrow">Make it yours</p><h2 id="metricsTitle">Choose your metrics</h2><div id="metricsList" class="metrics-list"></div></div></div>
+
+  <script src="nutrition.js"></script>
+  <script src="edit.js"></script>
+</body>
+</html>

@@ -39,6 +39,13 @@ const state = {
   loading: true,
   saving: false,
   legacyTotals: null,
+  profile: { name: "", allergens: [], avoid_foods: [], goals: [] },
+  // Nutrition already eaten in the current day/week (from saved meals),
+  // keyed by metric key, used as the baseline for per-day/week goal progress.
+  baseline: { day: {}, week: {} },
+  // Map of lower-cased meal name -> plate id for meals already in the user's
+  // history, used to block saving a duplicate name and link to its editor.
+  existingNames: new Map(),
 };
 
 let uidCounter = 1;
@@ -66,12 +73,11 @@ const el = {
   metricsModal: document.getElementById("metricsModal"),
   metricsClose: document.getElementById("metricsClose"),
   metricsList: document.getElementById("metricsList"),
-  loadModal: document.getElementById("loadModal"),
-  loadClose: document.getElementById("loadClose"),
-  loadList: document.getElementById("loadList"),
   menuNotice: document.getElementById("menuNotice"),
   nutritionNote: document.getElementById("nutritionNote"),
   actionStatus: document.getElementById("actionStatus"),
+  plateWarnings: document.getElementById("plateWarnings"),
+  goalProgress: document.getElementById("goalProgress"),
 };
 
 // ---- Helpers ---------------------------------------------------------------
@@ -103,6 +109,12 @@ function formatDate(date) {
   return new Date(date + "T00:00:00").toLocaleDateString(undefined, {
     weekday: "long", month: "long", day: "numeric",
   });
+}
+
+// Safe setter: the date readout is an optional bit of UI, so a missing
+// #trackerDate element must never break the rest of the page.
+function setTrackerDate(text) {
+  if (el.trackerDate) el.trackerDate.textContent = text;
 }
 
 function plateChanged() {
@@ -162,6 +174,7 @@ async function init() {
   // Render useful empty states even when the API is unavailable.
   state.halls = Object.keys(HALL_THEMES);
   renderHallTabs();
+  loadProfileAndBaseline(); // fire-and-forget; re-renders when ready
   renderPlate();
   renderOverview();
   try {
@@ -176,6 +189,125 @@ async function init() {
   // Do not override a hall the user picked while initialization was pending.
   if (!state.hall) await selectHall(state.halls[0], { skipWarn: true });
   else renderHallTabs();
+}
+
+// Load the user's saved preferences and compute how much of each goal metric
+// has already been eaten today / this week from saved meals (the baseline that
+// the current plate adds onto for per-day / per-week goals).
+async function loadProfileAndBaseline() {
+  loadExistingNames(); // fire-and-forget; re-renders when ready
+  try {
+    const pRes = await fetch("/api/profile");
+    if (pRes.ok) {
+      const p = await pRes.json();
+      state.profile = {
+        name: p.name || "",
+        allergens: Array.isArray(p.allergens) ? p.allergens : [],
+        avoid_foods: Array.isArray(p.avoid_foods) ? p.avoid_foods : [],
+        goals: Array.isArray(p.goals) ? p.goals : [],
+      };
+    }
+  } catch (err) { console.error(err); }
+
+  // Baselines only matter if the user has day/week goals.
+  const needsDay = state.profile.goals.some((g) => g.recurrence === "day");
+  const needsWeek = state.profile.goals.some((g) => g.recurrence === "week");
+  if (needsDay || needsWeek) {
+    try {
+      const today = new Date();
+      const todayStr = isoDate(today);
+      const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 6);
+      const from = needsWeek ? isoDate(weekAgo) : todayStr;
+      const res = await fetch(`/api/plates-between?from=${from}&to=${todayStr}`);
+      if (res.ok) {
+        const { plates } = await res.json();
+        state.baseline = computeBaseline(plates || [], todayStr, isoDate(weekAgo));
+      }
+    } catch (err) { console.error(err); }
+  }
+  renderPlate();
+  renderOverview();
+}
+
+function isoDate(d) {
+  return d.toLocaleDateString("en-CA"); // YYYY-MM-DD local
+}
+
+// Load the names of meals already in the user's history so we can block saving
+// a duplicate name.
+async function loadExistingNames() {
+  try {
+    const res = await fetch("/api/plates");
+    if (!res.ok) return;
+    const { plates } = await res.json();
+    if (!Array.isArray(plates)) return;
+    const map = new Map();
+    // Most-recent-first from the API; keep the first id seen for a given name.
+    for (const p of plates) {
+      const key = String(p.name || "").trim().toLowerCase();
+      if (key && !map.has(key)) map.set(key, p.id);
+    }
+    state.existingNames = map;
+    renderOverview();
+  } catch (err) { console.error(err); }
+}
+
+// The name this meal would actually be saved under (same fallback as save).
+function effectiveName() {
+  return el.plateName.value.trim() || `${state.hall} meal`;
+}
+
+// True if the effective name collides with an existing saved meal.
+function nameInUse() {
+  return state.existingNames.has(effectiveName().toLowerCase());
+}
+
+// The id of the existing meal whose name collides, or null.
+function conflictingPlateId() {
+  return state.existingNames.get(effectiveName().toLowerCase()) ?? null;
+}
+
+// Sum each goal metric across saved plates for "today" and "this week".
+function computeBaseline(plates, todayStr, weekStartStr) {
+  const day = {}, week = {};
+  for (const g of state.profile.goals) {
+    if (g.recurrence === "day") day[g.metric] = 0;
+    if (g.recurrence === "week") week[g.metric] = 0;
+  }
+  for (const p of plates) {
+    const d = (p.menu_date || "").slice(0, 10);
+    if (!d) continue;
+    const rows = Nutrition.rowsFromPlate(p);
+    const agg = Nutrition.aggregate(rows);
+    for (const key of Object.keys(day)) {
+      if (d === todayStr) day[key] += numFromAgg(agg, key);
+    }
+    for (const key of Object.keys(week)) {
+      if (d >= weekStartStr && d <= todayStr) week[key] += numFromAgg(agg, key);
+    }
+  }
+  return { day, week };
+}
+
+function numFromAgg(agg, metricKey) {
+  const m = Nutrition.METRICS.find((x) => x.key === metricKey);
+  return (m && Nutrition.metricNumber(m, agg)) || 0;
+}
+
+// Allergen + avoided-food analysis for the current plate rows.
+function analyzeWarnings() {
+  const perRow = {}; // uid -> { allergens: [], avoided: [] }
+  const allAllergens = new Set();
+  const allAvoided = new Set();
+  for (const row of state.rows) {
+    if (!row.item) continue;
+    const a = Nutrition.matchedAllergens(row.item, state.profile.allergens);
+    const v = Nutrition.matchedAvoided(row.item, state.profile.avoid_foods);
+    if (a.length || v.length) perRow[row.uid] = { allergens: a, avoided: v };
+    a.forEach((x) => allAllergens.add(x));
+    v.forEach((x) => allAvoided.add(x));
+  }
+  return { perRow, allergens: [...allAllergens], avoided: [...allAvoided] };
 }
 
 function renderHallTabs() {
@@ -217,9 +349,9 @@ async function selectHall(hall, { skipWarn = false, force = false, keepPlate = f
   if (!keepPlate) state.date = null;
   applyHallTheme(hall);
   el.plateName.placeholder = `e.g. Lunch at ${hall}`;
-  el.trackerDate.textContent = keepPlate
+  setTrackerDate(keepPlate
     ? `Saved meal · ${formatDate(state.date) || "Date unavailable"}`
-    : `${hall} · Loading menu…`;
+    : `${hall} · Loading menu…`);
   notice();
   closeAllDropdowns();
   renderHallTabs();
@@ -233,7 +365,7 @@ async function selectHall(hall, { skipWarn = false, force = false, keepPlate = f
     state.items = Array.isArray(data.items) ? data.items : [];
     if (!keepPlate) {
       state.date = data.date;
-      el.trackerDate.textContent = data.date ? `${hall} · ${formatDate(data.date)}` : hall;
+      setTrackerDate(data.date ? `${hall} · ${formatDate(data.date)}` : hall);
     }
     if (!state.items.length) notice("No menu is available for this dining hall. Try another hall or reload to retry.");
     else if (data.date !== new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" })) {
@@ -242,7 +374,7 @@ async function selectHall(hall, { skipWarn = false, force = false, keepPlate = f
   } catch (err) {
     if (request !== menuRequest) return;
     console.error(err);
-    if (!keepPlate) el.trackerDate.textContent = `${hall} · Menu unavailable`;
+    if (!keepPlate) setTrackerDate(`${hall} · Menu unavailable`);
     notice("We couldn't load the menu. Check your connection and reload to retry, or choose another hall.");
     state.items = [];
   } finally {
@@ -294,6 +426,9 @@ el.photoBox.onkeydown = (e) => {
   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.photoInput.click(); }
 };
 
+// Re-check the duplicate-name rule as the user types the meal name.
+el.plateName.oninput = () => renderOverview();
+
 // ---- Plate rows ------------------------------------------------------------
 el.addFoodBtn.onclick = () => {
   if (state.loading || !state.items.length) return;
@@ -307,8 +442,11 @@ function renderPlate() {
   el.addFoodBtn.disabled = state.loading || !state.items.length;
   el.emptyHelp.classList.toggle("hidden", state.rows.length > 0);
 
+  const warnings = analyzeWarnings();
+  renderPlateWarnings(warnings);
+
   el.plateItems.innerHTML = state.rows
-    .map((row) => foodRowHtml(row))
+    .map((row) => foodRowHtml(row, warnings.perRow[row.uid]))
     .join("");
 
   // Wire up each row
@@ -353,7 +491,7 @@ function renderPlate() {
   });
 }
 
-function foodRowHtml(row) {
+function foodRowHtml(row, warn) {
   const item = row.item;
   const foodLabel = item
     ? `<button type="button" class="food-label" title="${esc(item.dish_name)}">${esc(item.dish_name)}</button>`
@@ -369,8 +507,18 @@ function foodRowHtml(row) {
     portion = `<span class="portion-unit">—</span>`;
   }
 
+  // Allergen / avoided-food warning for this food.
+  let warnText = "";
+  const reasons = [];
+  if (warn && warn.allergens.length) reasons.push(`contains ${warn.allergens.join(", ")} (allergy)`);
+  if (warn && warn.avoided.length) reasons.push(`contains ${warn.avoided.join(", ")} (food you avoid)`);
+  if (reasons.length) {
+    warnText = `<p class="row-warn-text">⚠ This food ${reasons.join("; ")}.</p>`;
+  }
+
   return `
-    <div class="food-row" data-uid="${row.uid}">
+    <div class="food-row${reasons.length ? " warn" : ""}" data-uid="${row.uid}">
+      <span class="row-flag" aria-hidden="true">!</span>
       <div class="subchip food">
         ${foodLabel}<span class="caret">▾</span>
         <div class="food-dropdown hidden">
@@ -380,7 +528,32 @@ function foodRowHtml(row) {
       </div>
       <div class="subchip portion">${portion}</div>
       <button class="remove-food" aria-label="Remove food">×</button>
+      ${warnText}
     </div>`;
+}
+
+function renderPlateWarnings(warnings) {
+  const flagged = Object.keys(warnings.perRow).length;
+  if (!flagged) {
+    el.plateWarnings.classList.add("hidden");
+    el.plateWarnings.innerHTML = "";
+    return;
+  }
+  const parts = [];
+  if (warnings.allergens.length) {
+    parts.push(`<strong>Allergens on this plate:</strong> ${esc(warnings.allergens.join(", "))}.`);
+  }
+  if (warnings.avoided.length) {
+    parts.push(`<strong>Foods you avoid:</strong> ${esc(warnings.avoided.join(", "))}.`);
+  }
+  const foodWord = flagged === 1 ? "food" : "foods";
+  el.plateWarnings.innerHTML = `
+    <span class="warn-mark" aria-hidden="true">!</span>
+    <span class="warn-body">
+      <span class="warn-title">Heads up — ${flagged} ${foodWord} flagged</span>
+      <p class="warn-list">${parts.join("<br>")}</p>
+    </span>`;
+  el.plateWarnings.classList.remove("hidden");
 }
 
 function renderOptions(container, query, row) {
@@ -488,19 +661,30 @@ function hasPartialMetric(agg) {
 
 function renderOverview() {
   const chosen = state.rows.filter((r) => r.item && r.servings > 0);
-  el.saveBtn.disabled = !chosen.length || state.saving;
+  const duplicateName = chosen.length && nameInUse();
+  el.saveBtn.disabled = !chosen.length || state.saving || duplicateName;
   const agg = aggregate();
-  let note;
-  if (state.legacyTotals) {
-    note = "Saved totals from an older meal. Per-food nutrition was not recorded; editing may make totals unavailable.";
-  } else if (!chosen.length) {
-    note = "Add foods to see your meal's nutrition.";
-  } else if (hasPartialMetric(agg)) {
-    note = "Based on the portions you enter. ~ means some foods are missing that value, so the total is a partial estimate; — means no food has it.";
+  el.nutritionNote.classList.toggle("note-error", !!duplicateName);
+  if (duplicateName) {
+    // Rendered as HTML so we can include an "edit it" link to the conflict.
+    const id = conflictingPlateId();
+    const link = id != null
+      ? ` <a class="note-link" href="edit.html?id=${encodeURIComponent(id)}">Edit it</a>`
+      : "";
+    el.nutritionNote.innerHTML = `A meal with this name already exists in your history.${link}`;
   } else {
-    note = "Based on the portions you enter. — means nutrition data is unavailable.";
+    let note;
+    if (state.legacyTotals) {
+      note = "Saved totals from an older meal. Per-food nutrition was not recorded; editing may make totals unavailable.";
+    } else if (!chosen.length) {
+      note = "Add foods to see your meal's nutrition.";
+    } else if (hasPartialMetric(agg)) {
+      note = "Based on the portions you enter. ~ means some foods are missing that value, so the total is a partial estimate; — means no food has it.";
+    } else {
+      note = "Based on the portions you enter. — means nutrition data is unavailable.";
+    }
+    el.nutritionNote.textContent = note;
   }
-  el.nutritionNote.textContent = note;
   const visible = METRICS.filter((m) => state.visible.includes(m.key));
   if (!visible.length) {
     el.overview.innerHTML =
@@ -514,6 +698,59 @@ function renderOverview() {
         <div class="metric-label">${esc(m.label)}</div>
       </div>`)
     .join("");
+
+  renderGoals(agg);
+}
+
+// Render a progress bar for each saved goal. For per-day / per-week goals the
+// current plate is added on top of what's already been eaten in that window.
+function renderGoals(agg) {
+  const goals = state.profile.goals || [];
+  if (!goals.length) { el.goalProgress.innerHTML = ""; return; }
+
+  el.goalProgress.innerHTML = goals.map((g) => {
+    const m = METRICS.find((x) => x.key === g.metric);
+    if (!m) return "";
+    const unit = (m.unit || "").trim();
+    // Current plate's contribution to this metric.
+    const t = agg[g.metric];
+    const plateVal = t && t.count ? round(t.sum, 1) : 0;
+    const baseline =
+      g.recurrence === "day" ? (state.baseline.day[g.metric] || 0)
+      : g.recurrence === "week" ? (state.baseline.week[g.metric] || 0)
+      : 0;
+    const consumed = round(baseline + plateVal, 1);
+    const target = g.target || 0;
+    const type = g.type === "max" ? "max" : "min";
+    const pct = target > 0 ? Math.min(100, (consumed / target) * 100) : 0;
+    const ratio = target > 0 ? consumed / target : 0;
+
+    // Behavior differs by goal type:
+    // - "at most": staying under is good -> green while under, amber as you
+    //   approach the cap, red once exceeded.
+    // - "at least": reaching it is good -> fills green, marked met at/over 100%,
+    //   never red (exceeding a minimum is fine).
+    let fillCls, itemCls;
+    if (type === "max") {
+      fillCls = ratio > 1 ? "over" : ratio >= 0.85 ? "near" : "";
+      itemCls = ratio > 1 ? "over" : "";
+    } else {
+      fillCls = ""; // green fill as it grows
+      itemCls = ratio >= 1 ? "met" : "";
+    }
+
+    const recLabel = Nutrition.RECURRENCE_LABEL[g.recurrence] || g.recurrence;
+    const typeLabel = type === "max" ? "at most" : "at least";
+    const u = unit ? " " + unit : "";
+    return `
+      <div class="goal-item ${itemCls}">
+        <div class="goal-top">
+          <span class="goal-name">${esc(m.label)}<span class="goal-rec">${esc(recLabel)} · ${esc(typeLabel)}</span></span>
+          <span class="goal-val">${consumed}${u} / ${target}${u}</span>
+        </div>
+        <div class="goal-bar"><div class="goal-fill ${fillCls}" style="width:${pct}%"></div></div>
+      </div>`;
+  }).join("");
 }
 
 // ---- Metrics chooser -------------------------------------------------------
@@ -549,11 +786,16 @@ el.saveBtn.onclick = async () => {
     el.actionStatus.textContent = "Add a food with a portion greater than zero before saving.";
     return;
   }
+  if (nameInUse()) {
+    el.actionStatus.textContent = "A meal with this name already exists in your history";
+    return;
+  }
+  const name = effectiveName();
   const agg = aggregate();
   const totals = {};
   for (const m of METRICS) totals[m.key] = state.legacyTotals?.[m.key] ?? metricDisplay(m, agg);
   const payload = {
-    name: el.plateName.value.trim() || `${state.hall} meal`,
+    name,
     dining_hall: state.hall,
     menu_date: state.date,
     image: state.photo,
@@ -580,6 +822,8 @@ el.saveBtn.onclick = async () => {
     });
     if (!res.ok) throw new Error("Save failed");
     const saved = await res.json();
+    // Remember the saved name -> id so the same name can't be saved again.
+    state.existingNames.set(String(saved.name || name).trim().toLowerCase(), saved.id);
     if (request === menuRequest) {
       state.loadedPlateId = saved.id;
       el.actionStatus.textContent = "Meal saved. Find it in your meal history.";
@@ -594,71 +838,10 @@ el.saveBtn.onclick = async () => {
   }
 };
 
-el.loadBtn.onclick = async () => {
-  el.loadList.innerHTML = `<p class="load-empty">Loading your meals…</p>`;
-  openModal(el.loadModal, el.loadClose);
-  try {
-    const res = await fetch("/api/plates");
-    if (!res.ok) throw new Error("History request failed");
-    const { plates } = await res.json();
-    if (!Array.isArray(plates)) throw new Error("Invalid meal history");
-    if (!plates.length) {
-      el.loadList.innerHTML = `<p class="load-empty">Your first meal is waiting to be saved.</p>`;
-      return;
-    }
-    el.loadList.innerHTML = plates.map((p) => `
-      <button type="button" class="load-item" data-id="${Number(p.id)}">
-        <span class="load-info"><span class="ln">${esc(p.name)}</span>
-          <span class="lm">${esc(p.dining_hall || "")} · ${esc((p.menu_date || "").slice(0, 10))} · ${p.items.length} foods</span>
-        </span>
-      </button>`).join("");
-    el.loadList.querySelectorAll(".load-item").forEach((node) => {
-      node.onclick = () => loadPlate(Number(node.dataset.id));
-    });
-  } catch (err) {
-    console.error(err);
-    el.loadList.innerHTML = `<p class="load-empty">We couldn't load your meals. Close this window and try again.</p>`;
-  }
-};
-el.loadClose.onclick = () => closeModal(el.loadModal);
-
-async function loadPlate(id) {
-  if (!plateIsEmpty() && !confirm("Replace your current plate with this saved meal?")) return;
-  const request = ++plateLoadRequest;
-  try {
-    const res = await fetch(`/api/plates/${id}`);
-    if (!res.ok) throw new Error("Meal not found");
-    const plate = await res.json();
-    if (request !== plateLoadRequest) return;
-    if (!Array.isArray(plate.items) || !state.halls.includes(plate.dining_hall)) throw new Error("Invalid saved meal");
-    state.date = plate.menu_date || null;
-    state.rows = plate.items.map((saved) => {
-      const hasSnapshot = saved.nutrition && typeof saved.nutrition === "object";
-      const nutrition = Object.fromEntries(METRICS.map((m) => [m.field, hasSnapshot ? saved.nutrition[m.field] ?? null : null]));
-      return {
-        uid: uidCounter++,
-        item: {
-          id: saved.id, dish_name: saved.dish_name, serving_size: saved.serving_size,
-          ...nutrition, nutritionUnavailable: !hasSnapshot,
-        },
-        servings: Number.isFinite(saved.servings) ? Math.max(0, saved.servings) : 1,
-      };
-    });
-    // Older saves have aggregate totals but no per-food snapshot. Keep those
-    // totals until the user edits food/portions, instead of substituting today's menu.
-    state.legacyTotals = state.rows.some((r) => r.item.nutritionUnavailable) ? plate.totals : null;
-    state.loadedPlateId = plate.id;
-    el.plateName.value = plate.name || "";
-    setPhoto(plate.image);
-    el.actionStatus.textContent = "Saved meal loaded.";
-    closeModal(el.loadModal);
-    await selectHall(plate.dining_hall, { skipWarn: true, force: true, keepPlate: true });
-  } catch (err) {
-    if (request !== plateLoadRequest) return;
-    console.error(err);
-    el.loadList.innerHTML = `<p class="load-empty">This meal couldn't be loaded. Close this window and try again.</p>`;
-  }
-}
+// "Meal history" now opens the dedicated history page (which routes editing
+// through the date-preserving edit page). The old in-tracker load modal is kept
+// below but no longer wired to a button.
+el.loadBtn.onclick = () => { location.href = "history.html"; };
 
 // Keep keyboard focus inside dialogs and return it to the opening control.
 let modalOpener = null;
@@ -673,11 +856,9 @@ function closeModal(modal) {
 }
 
 // Close modals on backdrop click / Escape
-[el.metricsModal, el.loadModal].forEach((m) => {
-  m.onclick = (e) => { if (e.target === m) closeModal(m); };
-});
+el.metricsModal.onclick = (e) => { if (e.target === el.metricsModal) closeModal(el.metricsModal); };
 document.addEventListener("keydown", (e) => {
-  const modal = [el.metricsModal, el.loadModal].find((m) => !m.classList.contains("hidden"));
+  const modal = el.metricsModal.classList.contains("hidden") ? null : el.metricsModal;
   if (e.key === "Tab" && modal) {
     const controls = [...modal.querySelectorAll('button:not(:disabled), input:not(:disabled), [tabindex="0"]')];
     const first = controls[0], last = controls[controls.length - 1];
@@ -686,9 +867,7 @@ document.addEventListener("keydown", (e) => {
   }
   if (e.key === "Escape") {
     closeAllDropdowns();
-    [el.metricsModal, el.loadModal].forEach((modal) => {
-      if (!modal.classList.contains("hidden")) closeModal(modal);
-    });
+    if (!el.metricsModal.classList.contains("hidden")) closeModal(el.metricsModal);
   }
 });
 

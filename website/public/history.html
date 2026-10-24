@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Ueat — Meal history</title>
+  <link rel="icon" href="favicon.png" type="image/png" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="hall-theme.css" />
+  <link rel="stylesheet" href="tracker.css" />
+  <link rel="stylesheet" href="history.css" />
+</head>
+<body class="tracker-page">
+  <header class="topbar">
+    <a class="brand brand-logo" href="index.html" aria-label="Ueat home"><img src="logo.png" alt="Ueat" /></a>
+    <nav class="topbar-links" aria-label="Main navigation"><a href="index.html">Track a meal</a><a href="account.html">Account</a><a href="menu.html">Browse menus &nearr;</a></nav>
+  </header>
+
+  <main class="history">
+    <div class="tracker-heading">
+      <div><p class="eyebrow">Your meals over time</p><h2>Meal history</h2></div>
+    </div>
+
+    <section class="panel chart-section" aria-labelledby="chartHeading">
+      <div class="chart-top">
+        <div>
+          <p class="eyebrow">The bigger picture</p>
+          <h2 id="chartHeading">Trends</h2>
+        </div>
+        <div class="chart-controls">
+          <label class="control">Metric
+            <select id="metricSelect"></select>
+          </label>
+          <div class="range-tabs" id="rangeTabs" role="tablist" aria-label="Time range">
+            <button data-range="week" role="tab">Week</button>
+            <button data-range="month" role="tab" class="active">Month</button>
+            <button data-range="year" role="tab">Year</button>
+            <button data-range="all" role="tab">All</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <svg id="chart" class="chart" role="img" aria-label="Meal trend chart"></svg>
+        <p id="chartEmpty" class="chart-empty hidden">No meals in this range yet.</p>
+      </div>
+      <p id="chartSummary" class="chart-summary"></p>
+    </section>
+
+    <section class="panel timeline-section" aria-labelledby="timelineHeading">
+      <div class="chart-top">
+        <div>
+          <p class="eyebrow">Meal frequency</p>
+          <h2 id="timelineHeading">Timeline</h2>
+        </div>
+        <div class="chart-controls">
+          <div class="zoom-ctrl" role="group" aria-label="Zoom timeline">
+            <button id="zoomOut" class="zoom-btn" aria-label="Zoom out">&minus;</button>
+            <input id="zoomRange" type="range" min="0" max="100" value="45" aria-label="Timeline zoom" />
+            <button id="zoomIn" class="zoom-btn" aria-label="Zoom in">+</button>
+          </div>
+        </div>
+      </div>
+      <p class="timeline-hint">Each dot is a meal, placed by day and time of day. Scroll sideways through time; zoom to spread days out.</p>
+      <div class="timeline-wrap">
+        <svg id="timelineAxis" class="timeline-axis" aria-hidden="true"></svg>
+        <div id="timelineScroll" class="timeline-scroll">
+          <svg id="timeline" class="timeline" role="img" aria-label="Meal frequency timeline"></svg>
+        </div>
+      </div>
+      <p id="timelineEmpty" class="timeline-empty hidden">No meals yet to chart.</p>
+    </section>
+
+    <section class="panel list-section" aria-labelledby="listHeading">
+      <div class="list-top">
+        <div><p class="eyebrow">Every plate</p><h2 id="listHeading">Your meals</h2></div>
+        <input type="search" id="search" class="list-search" placeholder="Search meals, halls, foods…" aria-label="Search meals" />
+      </div>
+      <p id="listCount" class="list-count"></p>
+      <div id="mealList" class="meal-list" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script src="nutrition.js"></script>
+  <script src="history.js"></script>
+</body>
+</html>
